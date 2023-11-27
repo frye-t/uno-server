@@ -1,0 +1,3 @@
+interface GameCommand {
+    execute(): void;
+}
