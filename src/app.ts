@@ -2,6 +2,8 @@ import express from 'express';
 import cors from 'cors';
 import { createServer } from 'http';
 import { Server } from 'socket.io';
+import { GameController } from './controllers/gameController';
+import generateRoomCode from './utils/generateRoomCode';
 
 const app = express();
 const httpServer = createServer(app);
@@ -9,23 +11,62 @@ const io = new Server(httpServer, {
   cors: { origin: 'http://localhost:5173' },
 });
 
+const activeRooms: string[] = [];
+const gameControllers: Record<string, GameController> = {};
+
 app.use(cors());
 
 app.get('/', (req, res) => {
   res.send('Hello world!!!');
 });
 
-io.on('connect', (socket) => {
-  console.log('A user connected');
+app.get('/getRoomCode', (req, res) => {
+  const roomCode = generateRoomCode();
+  activeRooms.push(roomCode);
+  const data = { roomCode };
+  res.send(JSON.stringify(data));
 });
 
-import { Player } from './models/player';
-import { GameController } from './controllers/gameController';
+io.on('connect', (socket) => {
+  console.log('A user connected');
+  let room: string;
 
-const playerOne = new Player('1');
-const playerTwo = new Player('2');
+  socket.on('hostRoom', (data) => {
+    console.log('Got hostRoom Message', data);
+    const {roomCode} = data;
+    room = roomCode;
+    socket.join(roomCode);
+    const gameController = new GameController(io, room);
+    gameControllers[roomCode] = gameController;
+    gameController.playerJoined(socket);
+  });
 
-const gameController = new GameController([playerOne, playerTwo]);
-gameController.startGame();
+  socket.on('joinRoom', (data) => {
+    const {roomCode} = data;
+    console.log('Got joinRoom Message', roomCode);
+    const roomExists = activeRooms.some((rC) => rC === roomCode);
+    if (roomExists) {
+      room = roomCode;
+      socket.join(roomCode);
+      socket.emit('roomJoined');
+      const gameController = gameControllers[room];
+      gameController.playerJoined(socket);
+    } else {
+      socket.emit('roomJoinError');
+    }
+  });
+
+  socket.on('startGame', () => {
+    console.log("startGame received");
+    const gameController = gameControllers[room];
+    console.log("Starting game for:", gameController);
+    gameController.startGame();
+  })
+
+  socket.on('message', () => {
+    console.log("Got a message, sending to room:", room)
+    io.to(room).emit("messageReceived");
+  })
+});
 
 export default httpServer;
