@@ -1,13 +1,13 @@
 import { UNOCard } from './unoCard';
-import { Socket } from 'socket.io';
 export declare class Player {
     private id;
-    private socket;
     private hand;
-    constructor(id: string, socket: Socket);
+    constructor(id: string);
     drawCard(card: UNOCard): void;
     playCard(): void;
     addCardToHand(card: UNOCard): void;
     printHand(): void;
     getId(): string;
+    getHand(): UNOCard[];
+    getHandSize(): number;
 }

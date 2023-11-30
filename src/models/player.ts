@@ -3,12 +3,10 @@ import { Socket } from 'socket.io';
 
 export class Player {
   private id: string;
-  private socket: Socket;
   private hand: UNOCard[];
 
-  constructor(id: string, socket: Socket) {
+  constructor(id: string) {
     this.id = id;
-    this.socket = socket;
     this.hand = [];
   }
 
@@ -28,5 +26,13 @@ export class Player {
 
   getId(): string {
     return this.id;
+  }
+
+  getHand(): UNOCard[] {
+    return this.hand.slice();
+  }
+
+  getHandSize(): number {
+    return this.hand.length;
   }
 }

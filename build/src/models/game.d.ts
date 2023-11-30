@@ -1,5 +1,6 @@
 import { Player } from './player';
 import { UNOCard } from './unoCard';
+import { GameState } from '../types';
 export declare class Game {
     private players;
     private currentPlayerIndex;
@@ -13,4 +14,7 @@ export declare class Game {
     drawCard(): UNOCard;
     getDiscardPile(): UNOCard[];
     private flipTopCard;
+    getCurrentGameState(): GameState;
+    getCurrentTurnPlayerId(): string;
+    private getStartingPlayerIndex;
 }

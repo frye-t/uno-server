@@ -19,6 +19,7 @@ class Game {
             player.printHand();
         }
         this.flipTopCard();
+        this.currentPlayerIndex = this.getStartingPlayerIndex();
     }
     dealStartingHands() {
         for (let i = 0; i < 7; i++) {
@@ -51,6 +52,23 @@ class Game {
         const topCard = this.deck.draw();
         topCard.toggleVisible();
         this.discardPile.unshift(topCard);
+    }
+    getCurrentGameState() {
+        const gameState = {
+            players: this.players.map(player => ({
+                id: player.getId(),
+                hand: player.getHand(),
+                cardCount: player.getHandSize(),
+            })),
+            discardPile: this.discardPile,
+        };
+        return gameState;
+    }
+    getCurrentTurnPlayerId() {
+        return this.players[this.currentPlayerIndex].getId();
+    }
+    getStartingPlayerIndex() {
+        return Math.floor(Math.random() * this.players.length);
     }
 }
 exports.Game = Game;

@@ -2,6 +2,7 @@ import {Player} from './player';
 import {UNOCard} from './unoCard';
 import {UNODeck} from './unoDeck';
 import {DrawCardCommand} from '../commands/drawCardCommand';
+import { GameState } from '../types';
 
 export class Game {
   private players: Player[];
@@ -28,6 +29,7 @@ export class Game {
     }
 
     this.flipTopCard();
+    this.currentPlayerIndex = this.getStartingPlayerIndex();
   }
 
   private dealStartingHands(): void {
@@ -66,5 +68,26 @@ export class Game {
     const topCard = this.deck.draw();
     topCard.toggleVisible();
     this.discardPile.unshift(topCard);
+  }
+
+  getCurrentGameState(): GameState {
+    const gameState = {
+      players: this.players.map(player => ({
+        id: player.getId(),
+        hand: player.getHand(),
+        cardCount: player.getHandSize(),
+      })),
+      discardPile: this.discardPile,
+    }
+
+    return gameState;
+  }
+
+  getCurrentTurnPlayerId(): string {
+    return this.players[this.currentPlayerIndex].getId();
+  }
+
+  private getStartingPlayerIndex(): number {
+    return Math.floor(Math.random() * this.players.length);
   }
 }

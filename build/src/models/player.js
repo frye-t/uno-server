@@ -2,9 +2,8 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.Player = void 0;
 class Player {
-    constructor(id, socket) {
+    constructor(id) {
         this.id = id;
-        this.socket = socket;
         this.hand = [];
     }
     drawCard(card) {
@@ -19,6 +18,12 @@ class Player {
     }
     getId() {
         return this.id;
+    }
+    getHand() {
+        return this.hand.slice();
+    }
+    getHandSize() {
+        return this.hand.length;
     }
 }
 exports.Player = Player;
