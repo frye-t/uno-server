@@ -1,9 +1,9 @@
-import { Game } from "../models/game";
-import { Player } from "../models/player";
-import { EventManager } from "../services/eventManager";
-import { Socket, Server } from "socket.io";
-import { GameState } from "../types";
-import shortUUID from "short-uuid";
+import { Game } from '../models/game';
+import { Player } from '../models/player';
+import { EventManager } from '../services/eventManager';
+import { Socket, Server } from 'socket.io';
+import { GameState } from '../types';
+// import shortUUID from 'short-uuid';
 
 export class GameController {
   private io: Server;
@@ -27,7 +27,7 @@ export class GameController {
     const player = new Player(newPlayerId);
     this.players.push(player);
     this.sockets.set(newPlayerId, socket);
-    this.sendMessageToRoom("playerJoined", null);
+    this.sendMessageToRoom('playerJoined', null);
   }
 
   private generatePlayerId(): string {
@@ -37,20 +37,45 @@ export class GameController {
   startGame(): void {
     this.game = new Game(this.players);
     this.game.start();
-    this.sendMessageToRoom("gameStarted", null);
-    const gameState = this.game.getCurrentGameState();
-    this.sendStateToPlayers(gameState);
+    this.sendMessageToRoom('gameStarted', null);
 
-    const currentTurnPlayerId = this.game.getCurrentTurnPlayerId();
-    this.initiateTurn(currentTurnPlayerId);
+    this.updateGameStateToClients();
+    this.initiateTurn();
   }
 
-  private initiateTurn(currentTurnPlayerId: string) {
-    for (const player of this.players) {
-      const playerId = player.getId();
-      const isCurrentTurn = currentTurnPlayerId === playerId;
-      this.notifyPlayerTurnStatus(playerId, isCurrentTurn, currentTurnPlayerId);
+  private updateGameStateToClients() {
+    if (this.game) {
+      const gameState = this.game.getCurrentGameState();
+      this.sendStateToPlayers(gameState);
+    } else {
+      console.error('Game is not initialized');
     }
+  }
+
+  private initiateTurn() {
+    if (this.game) {
+      const currentTurnPlayerId = this.game?.getCurrentTurnPlayerId();
+      for (const player of this.players) {
+        const playerId = player.getId();
+        const isCurrentTurn = currentTurnPlayerId === playerId;
+        this.notifyPlayerTurnStatus(
+          playerId,
+          isCurrentTurn,
+          currentTurnPlayerId
+        );
+      }
+    } else {
+      console.error('Game is not initialized');
+    }
+  }
+
+  handlePlayerAction(action: string, player: Player): void {
+    if (!this.game) {
+      console.error('Game is not initialized');
+      return;
+    }
+
+    this.game.performAction(action, player);
   }
 
   private notifyPlayerTurnStatus(
@@ -59,9 +84,28 @@ export class GameController {
     currentTurnPlayerId: string
   ) {
     if (isCurrentTurn) {
-      this.sendMessage(playerId, "turnStart");
+      this.sendMessage(playerId, 'turnStart');
     } else {
-      this.sendMessage(playerId, "turnWaiting", currentTurnPlayerId);
+      this.sendMessage(playerId, 'turnWaiting', currentTurnPlayerId);
+    }
+  }
+
+  private sendStateToPlayers(gameState: GameState): void {
+    for (const player of this.players) {
+      const playerId = player.getId();
+
+      const playerGameState = {
+        ...gameState,
+        players: gameState.players.map((p) => {
+          if (p.id === playerId) {
+            return { id: p.id, cardCount: p.cardCount, hand: p.hand };
+          } else {
+            return { id: p.id, cardCount: p.cardCount };
+          }
+        }),
+      };
+
+      this.sendMessage(playerId, 'gameState', JSON.stringify(playerGameState));
     }
   }
 
@@ -85,33 +129,5 @@ export class GameController {
 
   private sendMessageToRoom(messageType: string, data?: any) {
     this.io.to(this.roomCode).emit(messageType, data);
-  }
-
-  private sendStateToPlayers(gameState: GameState): void {
-    for (const player of this.players) {
-      const playerId = player.getId();
-
-      const playerGameState = {
-        ...gameState,
-        players: gameState.players.map((p) => {
-          if (p.id === playerId) {
-            return { id: p.id, cardCount: p.cardCount, hand: p.hand };
-          } else {
-            return { id: p.id, cardCount: p.cardCount };
-          }
-        }),
-      };
-      
-      this.sendMessage(playerId, "gameState", JSON.stringify(playerGameState));
-    }
-  }
-
-  handlePlayerAction(action: string, player: Player): void {
-    if (!this.game) {
-      console.error("Game is not initialized");
-      return;
-    }
-
-    this.game.performAction(action, player);
   }
 }
