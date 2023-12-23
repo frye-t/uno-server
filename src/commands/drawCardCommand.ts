@@ -1,5 +1,6 @@
 import {UNOCard} from '../models/unoCard';
 import {Player} from '../models/player';
+import { GameCommand } from './gameCommand';
 
 export class DrawCardCommand implements GameCommand {
   private player: Player;

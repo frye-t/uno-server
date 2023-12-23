@@ -9,7 +9,12 @@ class Player {
     drawCard(card) {
         this.hand.push(card);
     }
-    playCard() { }
+    playCard(card) {
+        this.hand = this.hand.filter(c => c != card);
+    }
+    findCard(cardData) {
+        return this.hand.find(card => card.getColor() === cardData.suit && card.getNumber() === cardData.rank) || null;
+    }
     addCardToHand(card) {
         this.hand.push(card);
     }

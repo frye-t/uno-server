@@ -1,3 +1,4 @@
+import { ActionData } from '../types/ActionData';
 import {UNOCard} from './unoCard';
 import { Socket } from 'socket.io';
 
@@ -14,7 +15,13 @@ export class Player {
     this.hand.push(card);
   }
 
-  playCard(): void {}
+  playCard(card: UNOCard): void {
+    this.hand = this.hand.filter(c => c != card);
+  }
+
+  findCard(cardData: ActionData): UNOCard | null {
+    return this.hand.find(card => card.getColor() === cardData.suit && card.getNumber() === cardData.rank) || null
+  }
 
   addCardToHand(card: UNOCard): void {
     this.hand.push(card);

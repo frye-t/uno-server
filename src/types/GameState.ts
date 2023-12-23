@@ -1,4 +1,4 @@
-import { UNOCard } from "./models/unoCard";
+import { UNOCard } from "../models/unoCard";
 
 export interface GameState {
   players: Array<{

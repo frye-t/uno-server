@@ -12,4 +12,12 @@ export class UNOCard extends Card {
   getColor(): string {
     return this.getSuit();
   }
+
+  cardPlayableOnTop(cardToPlay: UNOCard) {
+    return this.getNumber() === cardToPlay.getNumber() || this.getColor() === cardToPlay.getColor() || cardToPlay.getColor() === 'Wild'
+  }
+
+  isWildCard(): boolean {
+    return this.getColor() === "Wild"
+  }
 }

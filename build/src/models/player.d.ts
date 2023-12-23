@@ -4,7 +4,12 @@ export declare class Player {
     private hand;
     constructor(id: string);
     drawCard(card: UNOCard): void;
-    playCard(): void;
+    playCard(card: UNOCard): void;
+    findCard(cardData: {
+        id: number;
+        suit: string;
+        rank: string;
+    }): UNOCard | null;
     addCardToHand(card: UNOCard): void;
     printHand(): void;
     getId(): string;

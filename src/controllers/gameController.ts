@@ -2,60 +2,89 @@ import { Game } from '../models/game';
 import { Player } from '../models/player';
 import { EventManager } from '../services/eventManager';
 import { Socket, Server } from 'socket.io';
-import { GameState } from '../types';
+import { GameState } from '../types/GameState';
+import PlayerController from './playerController';
+import { Observer } from '../types/Observer';
 // import shortUUID from 'short-uuid';
 
-export class GameController {
+export class GameController implements Observer {
   private io: Server;
   private roomCode: string;
   private players: Player[];
   private sockets: Map<string, Socket>;
   private game: Game | null = null;
+  private playerController: PlayerController;
+  private isNewGameSetup: boolean = false;
 
-  constructor(io: Server, roomCode: string) {
+  constructor(io: Server, roomCode: string, playerController: PlayerController) {
     this.io = io;
     this.roomCode = roomCode;
     this.players = [];
     this.sockets = new Map();
+    this.playerController = playerController;
     this.bindSocketEvents();
+  }
+
+  update(gameState: GameState): void {
+    this.sendStateToPlayers(gameState);
+
+    if (this.isNewGameSetup) {
+      this.isNewGameSetup = false;
+    }
+  }
+
+  requirePlayerAdditionalAction(actionRequired: string): void {
+    console.log("Need additional action:", actionRequired);
+    const playerId = this.game?.getCurrentTurnPlayerId();
+    if (playerId){
+      this.sendMessage(playerId, actionRequired)
+    }
+  }
+
+  nextTurnStart(): void {
+    this.initiateTurn();
   }
 
   bindSocketEvents() {}
 
   playerJoined(socket: Socket): void {
-    const newPlayerId = this.generatePlayerId();
-    const player = new Player(newPlayerId);
-    this.players.push(player);
-    this.sockets.set(newPlayerId, socket);
+    // const newPlayerId = this.generatePlayerId();
+    // const player = new Player(newPlayerId);
+    // this.players.push(player);
+    // this.sockets.set(newPlayerId, socket);
+    this.playerController.addPlayer(socket);
     this.sendMessageToRoom('playerJoined', null);
   }
 
-  private generatePlayerId(): string {
-    return (this.players.length + 1).toString();
-  }
+  // private generatePlayerId(): string {
+  //   return (this.players.length + 1).toString();
+  // }
 
   startGame(): void {
-    this.game = new Game(this.players);
+    this.game = new Game(this.playerController.getPlayers());
+    this.game.addObserver(this);
+    this.isNewGameSetup = true;
     this.game.start();
     this.sendMessageToRoom('gameStarted', null);
 
-    this.updateGameStateToClients();
-    this.initiateTurn();
+    // this.updateGameStateToClients();
+    // this.initiateTurn();
   }
 
-  private updateGameStateToClients() {
-    if (this.game) {
-      const gameState = this.game.getCurrentGameState();
-      this.sendStateToPlayers(gameState);
-    } else {
-      console.error('Game is not initialized');
-    }
-  }
+  // private updateGameStateToClients() {
+  //   if (this.game) {
+  //     const gameState = this.game.getCurrentGameState();
+  //     this.sendStateToPlayers(gameState);
+  //   } else {
+  //     console.error('Game is not initialized');
+  //   }
+  // }
 
   private initiateTurn() {
     if (this.game) {
       const currentTurnPlayerId = this.game?.getCurrentTurnPlayerId();
-      for (const player of this.players) {
+      const players = this.playerController.getPlayers();
+      for (const player of players) {
         const playerId = player.getId();
         const isCurrentTurn = currentTurnPlayerId === playerId;
         this.notifyPlayerTurnStatus(
@@ -69,13 +98,17 @@ export class GameController {
     }
   }
 
-  handlePlayerAction(action: string, player: Player): void {
+  handlePlayerAction(action: string, player: Player, cardData?: { id: number, suit: string, rank: string }): void {
     if (!this.game) {
       console.error('Game is not initialized');
       return;
     }
 
-    this.game.performAction(action, player);
+    if (cardData) {
+      this.game.performAction(action, player, cardData);
+    } else {
+      this.game.performAction(action, player);
+    }
   }
 
   private notifyPlayerTurnStatus(
@@ -91,7 +124,8 @@ export class GameController {
   }
 
   private sendStateToPlayers(gameState: GameState): void {
-    for (const player of this.players) {
+    const players = this.playerController.getPlayers();
+    for (const player of players) {
       const playerId = player.getId();
 
       const playerGameState = {
@@ -110,7 +144,8 @@ export class GameController {
   }
 
   private sendMessage(playerId: string, messageType: string, data?: any) {
-    const socket = this.sockets.get(playerId);
+    // const socket = this.sockets.get(playerId);
+    const socket = this.playerController.getPlayerSocketById(playerId);
 
     if (!socket) {
       console.error(`Socket not found for player ${playerId}`);

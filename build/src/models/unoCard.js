@@ -12,6 +12,9 @@ class UNOCard extends card_1.Card {
     getColor() {
         return this.getSuit();
     }
+    cardPlayableOnTop(cardToPlay) {
+        return this.getNumber() === cardToPlay.getNumber() || this.getColor() === cardToPlay.getColor() || cardToPlay.getColor() === 'Wild';
+    }
 }
 exports.UNOCard = UNOCard;
 //# sourceMappingURL=unoCard.js.map
