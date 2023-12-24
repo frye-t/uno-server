@@ -13,7 +13,19 @@ class UNOCard extends card_1.Card {
         return this.getSuit();
     }
     cardPlayableOnTop(cardToPlay) {
-        return this.getNumber() === cardToPlay.getNumber() || this.getColor() === cardToPlay.getColor() || cardToPlay.getColor() === 'Wild';
+        return (this.getNumber() === cardToPlay.getNumber() ||
+            this.getColor() === cardToPlay.getColor() ||
+            cardToPlay.getColor() === 'Wild');
+    }
+    isWildCard() {
+        return this.getColor() === 'Wild';
+    }
+    isWildDrawFour() {
+        return this.getColor() === 'Wild' && this.getNumber() === 'Draw4';
+    }
+    isActionCard() {
+        const actionCards = ['Draw2', 'Skip', 'Reverse'];
+        return actionCards.includes(this.getNumber());
     }
 }
 exports.UNOCard = UNOCard;

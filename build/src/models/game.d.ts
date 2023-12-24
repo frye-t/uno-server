@@ -1,25 +1,37 @@
 import { Player } from './player';
 import { GameState } from '../types/GameState';
 import { Observer } from '../types/Observer';
+import { ActionData } from '../types/ActionData';
 export declare class Game {
     private players;
     private currentPlayerIndex;
     private turnCounter;
     private deck;
     private discardPile;
-    private direction;
+    private isClockwiseTurnOrder;
+    private isPlayerActionRequired;
+    private activeColor;
+    private activeNumber;
+    private lastActionCard;
+    private needsDrawAction;
+    private needsDrawFourAction;
+    private isChallengeInProgress;
+    private playerWonChallenge;
     private observers;
     constructor(players: Player[]);
+    private resetActionState;
     addObserver(observer: Observer): void;
     removeObserver(observer: Observer): void;
     notifyObservers(): void;
+    notifyPlayerAdditionalAction(actionRequired: string): void;
+    notifyNextTurn(): void;
     start(): void;
     private dealStartingHands;
-    performAction(action: string, player: Player, cardData?: {
-        id: number;
-        suit: string;
-        rank: string;
-    }): void;
+    performAction(action: string, player: Player, data?: ActionData): void;
+    private doesChallengeWin;
+    private endTurn;
+    private resolveChallenge;
+    private setActiveColor;
     private drawCard;
     private playCard;
     private getDiscardPile;
@@ -28,5 +40,9 @@ export declare class Game {
     getCurrentTurnPlayerId(): string;
     private getStartingPlayerIndex;
     private setNextPlayerIndex;
+    private getNextPlayerIndex;
+    private getPreviousPlayerIndex;
     private isValidPlay;
+    private handleDrawN;
+    private handleActionCard;
 }

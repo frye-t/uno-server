@@ -19,6 +19,16 @@ class GameController {
         if (this.isNewGameSetup) {
             this.isNewGameSetup = false;
         }
+    }
+    requirePlayerAdditionalAction(actionRequired) {
+        var _a;
+        console.log("Need additional action:", actionRequired);
+        const playerId = (_a = this.game) === null || _a === void 0 ? void 0 : _a.getCurrentTurnPlayerId();
+        if (playerId) {
+            this.sendMessage(playerId, actionRequired);
+        }
+    }
+    nextTurnStart() {
         this.initiateTurn();
     }
     bindSocketEvents() { }

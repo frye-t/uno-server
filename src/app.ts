@@ -76,11 +76,19 @@ io.on('connect', (socket) => {
     io.to(room).emit("messageReceived");
   })
 
+  socket.on('drawCard', (data) => {
+    const playerController = playerControllers[room];
+    const gameController = gameControllers[room];
+    const player = playerController.getPlayerBySocket(socket);
+    if (player) {
+      gameController.handlePlayerAction('draw', player)
+    }
+  })
+
   socket.on('playCard', (data) => {
     console.log("Player played card:", data)
     const playerController = playerControllers[room];
     const gameController = gameControllers[room];
-    console.log("PlayerController:", playerController);
     const player = playerController.getPlayerBySocket(socket);
     if (player) {
       gameController.handlePlayerAction('play', player, data)
@@ -90,10 +98,27 @@ io.on('connect', (socket) => {
   socket.on('additionalAction', (data) => {
     const playerController = playerControllers[room];
     const gameController = gameControllers[room];
-    console.log("PlayerController:", playerController);
     const player = playerController.getPlayerBySocket(socket);
     if (player) {
       gameController.handlePlayerAction('additionalAction', player, data);
+    }
+  })
+
+  socket.on('confirmChallenge', () => {
+    const playerController = playerControllers[room];
+    const gameController = gameControllers[room];
+    const player = playerController.getPlayerBySocket(socket);
+    if (player) {
+      gameController.handlePlayerAction('challengeDrawFour', player);
+    }
+  })
+
+  socket.on('discardChallenge', () => {
+    const playerController = playerControllers[room];
+    const gameController = gameControllers[room];
+    const player = playerController.getPlayerBySocket(socket);
+    if (player) {
+      gameController.handlePlayerAction('discardChallenge', player);
     }
   })
 });

@@ -13,6 +13,8 @@ export declare class GameController implements Observer {
     private isNewGameSetup;
     constructor(io: Server, roomCode: string, playerController: PlayerController);
     update(gameState: GameState): void;
+    requirePlayerAdditionalAction(actionRequired: string): void;
+    nextTurnStart(): void;
     bindSocketEvents(): void;
     playerJoined(socket: Socket): void;
     startGame(): void;

@@ -4,4 +4,7 @@ export declare class UNOCard extends Card {
     getNumber(): string;
     getColor(): string;
     cardPlayableOnTop(cardToPlay: UNOCard): boolean;
+    isWildCard(): boolean;
+    isWildDrawFour(): boolean;
+    isActionCard(): boolean;
 }
