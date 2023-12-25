@@ -12,7 +12,6 @@ import { AdditionalActionCommand } from '../commands/additionalActionCommand';
 export class Game {
   private players: Player[];
   private currentPlayerIndex: number;
-  private turnCounter: number;
   private deck: UNODeck;
   private discardPile: UNOCard[];
   private isClockwiseTurnOrder: boolean;
@@ -30,7 +29,6 @@ export class Game {
   constructor(players: Player[]) {
     this.players = players;
     this.currentPlayerIndex = 0;
-    this.turnCounter = 1;
     this.deck = new UNODeck();
     this.discardPile = [];
     this.isClockwiseTurnOrder = true;
@@ -42,14 +40,6 @@ export class Game {
       type: '',
       processed: true,
     };
-    this.isPlayerActionRequired = false;
-    this.needsDrawAction = false;
-    this.needsDrawFourAction = false;
-    this.isChallengeInProgress = false;
-    this.playerWonChallenge = false;
-  }
-
-  private resetActionState() {
     this.isPlayerActionRequired = false;
     this.needsDrawAction = false;
     this.needsDrawFourAction = false;
@@ -98,7 +88,7 @@ export class Game {
 
   private dealStartingHands(): void {
     // TODO: Fix this back to 7
-    for (let i = 0; i < 7; i++) {
+    for (let i = 0; i < 3; i++) {
       for (const player of this.players) {
         this.performAction('draw', player);
       }
@@ -149,6 +139,16 @@ export class Game {
               console.log('Player chose a color');
               callback = () => this.setActiveColor(actionValue);
               break;
+            case 'handleChallenge':
+              if (data.value === 'true') {
+                console.log('Player challenged Draw Four');
+                callback = () => this.resolveChallenge(this.doesChallengeWin());
+                break;
+              } else {
+                console.log('Player declined Draw Four Challenge');
+                callback = () => this.resolveNoChallenge();
+                break;
+              }
           }
           if (callback) {
             command = new AdditionalActionCommand(callback);
@@ -156,29 +156,21 @@ export class Game {
           this.isPlayerActionRequired = false;
         }
         break;
-      // TODO: Refactor to CommandPattern and AdditionalAction
-      case 'challengeDrawFour':
-        console.log("Player challenged Draw Four")
-        this.resolveChallenge(this.doesChallengeWin());
-        // Above code will be refactored into command
-        command = new AdditionalActionCommand(() => {});
-        break;
-      case 'discardChallenge':
-        this.handleDrawN(this.players[this.currentPlayerIndex], 4);
-        // Above code will be refactored into command
-        command = new AdditionalActionCommand(() => {});
-        this.isPlayerActionRequired = false;
-        this.needsDrawFourAction = false;
-        this.isChallengeInProgress = false;
-        break;
     }
 
     if (command) {
       command.execute();
       this.notifyObservers();
-      console.log("NeedsDrawAction:", this.needsDrawAction);
-      if (!this.isPlayerActionRequired && !this.needsDrawAction) {
+      // Don't end turn if another action is required,
+      // a draw action is taking place, or a player won a challenge
+      if (
+        !this.isPlayerActionRequired &&
+        !this.needsDrawAction &&
+        !this.playerWonChallenge
+      ) {
         this.endTurn();
+      } else if (this.playerWonChallenge) {
+        this.playerWonChallenge = false;
       }
     } else {
       console.error(
@@ -188,7 +180,7 @@ export class Game {
   }
 
   private doesChallengeWin(): boolean {
-    return true;
+    return false;
   }
 
   private endTurn(): void {
@@ -199,20 +191,20 @@ export class Game {
         this.handleActionCard(this.lastActionCard.type);
       }
     }
+
+    this.setNextPlayerIndex();
+    this.notifyNextTurn();
+
     if (this.needsDrawFourAction && !this.isChallengeInProgress) {
-      console.log("D4A")
-      this.setNextPlayerIndex();
-      this.notifyNextTurn();
+      // Handle beginning a challenge on next turn
       this.notifyPlayerAdditionalAction('challenge');
       this.isChallengeInProgress = true;
-    } else if (!this.isPlayerActionRequired && !this.playerWonChallenge) {
-      console.log("Next Turn");
-      this.playerWonChallenge = false;
-      this.setNextPlayerIndex();
-      this.notifyNextTurn();
-    } else if (this.playerWonChallenge) {
-      this.playerWonChallenge = false;
-    }
+    } 
+    // else if (!this.isPlayerActionRequired && !this.playerWonChallenge) {
+    //   // Handle Next Turn as normal
+    //   this.setNextPlayerIndex();
+    //   this.notifyNextTurn();
+    // }
   }
 
   private resolveChallenge(challengeResult: boolean): void {
@@ -222,12 +214,15 @@ export class Game {
       this.playerWonChallenge = true;
     } else {
       this.handleDrawN(this.players[this.currentPlayerIndex], 6);
-      this.isChallengeInProgress = false;
-      this.needsDrawFourAction = false;
-      // this.endTurn();
     }
     this.isChallengeInProgress = false;
     this.needsDrawFourAction = false;
+  }
+
+  private resolveNoChallenge(): void {
+    this.handleDrawN(this.players[this.currentPlayerIndex], 4);
+    this.needsDrawFourAction = false;
+    this.isChallengeInProgress = false;
   }
 
   private setActiveColor(color: string) {
@@ -241,10 +236,6 @@ export class Game {
   private playCard(card: UNOCard): void {
     this.discardPile.push(card);
     this.notifyObservers();
-  }
-
-  private getDiscardPile(): UNOCard[] {
-    return this.discardPile;
   }
 
   private flipTopCard(): void {
@@ -303,6 +294,7 @@ export class Game {
   }
 
   private handleDrawN(player: Player, cardsToDraw: number): void {
+    // Need this flag to avoid turn skipping on action execution
     this.needsDrawAction = true;
     for (let i = 0; i < cardsToDraw; i++) {
       this.performAction('draw', player);

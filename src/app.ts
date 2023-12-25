@@ -96,29 +96,12 @@ io.on('connect', (socket) => {
   })
 
   socket.on('additionalAction', (data) => {
+    console.log('in additionalAction:', data)
     const playerController = playerControllers[room];
     const gameController = gameControllers[room];
     const player = playerController.getPlayerBySocket(socket);
     if (player) {
       gameController.handlePlayerAction('additionalAction', player, data);
-    }
-  })
-
-  socket.on('confirmChallenge', () => {
-    const playerController = playerControllers[room];
-    const gameController = gameControllers[room];
-    const player = playerController.getPlayerBySocket(socket);
-    if (player) {
-      gameController.handlePlayerAction('challengeDrawFour', player);
-    }
-  })
-
-  socket.on('discardChallenge', () => {
-    const playerController = playerControllers[room];
-    const gameController = gameControllers[room];
-    const player = playerController.getPlayerBySocket(socket);
-    if (player) {
-      gameController.handlePlayerAction('discardChallenge', player);
     }
   })
 });
