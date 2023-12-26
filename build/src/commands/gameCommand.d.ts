@@ -1,3 +1,3 @@
-interface GameCommand {
+export interface GameCommand {
     execute(): void;
 }

@@ -11,21 +11,29 @@ class UNODeck extends deck_1.Deck {
         const cards = [];
         const colors = ['Red', 'Blue', 'Green', 'Yellow'];
         const numbers = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9'];
-        const actionCards = ['Draw', 'Reverse', 'Skip'];
-        const wildCards = ['Card', 'Draw'];
-        for (const color of colors) {
-            for (const number of numbers) {
-                cards.push(cardFactory_1.CardFactory.createNumberCard(number, color));
-                if (number !== '0') {
-                    cards.push(cardFactory_1.CardFactory.createNumberCard(number, color));
-                }
-            }
-            for (const action of actionCards) {
-                cards.push(cardFactory_1.CardFactory.createActionCard(action, color));
-                cards.push(cardFactory_1.CardFactory.createActionCard(action, color));
-            }
-        }
-        for (let i = 0; i < 4; i++) {
+        // const actionCards = ['Draw2', 'Reverse', 'Skip'];
+        // const actionCards = ['Reverse', 'Reverse', 'Reverse'];
+        // const actionCards = ['Skip', 'Skip', 'Skip'];
+        const actionCards = ['Draw2', 'Draw2', 'Draw2'];
+        const wildCards = ['Card', 'Draw4'];
+        // for (const color of colors) {
+        //   for (const number of numbers) {
+        //     cards.push(CardFactory.createNumberCard(number, color));
+        //     if (number !== '0') {
+        //       cards.push(CardFactory.createNumberCard(number, color));
+        //     }
+        //   }
+        //   for (const action of actionCards) {
+        //     // Remove this inner for loop
+        //     for (let i = 0; i < 10; i++) {
+        //       // Testing only
+        //       cards.push(CardFactory.createActionCard(action, color));
+        //       cards.push(CardFactory.createActionCard(action, color));
+        //     }
+        //   }
+        // }
+        // TODO: Change this back to 4
+        for (let i = 0; i < 20; i++) {
             cards.push(cardFactory_1.CardFactory.createWildCard(wildCards[0]));
             cards.push(cardFactory_1.CardFactory.createWildCard(wildCards[1]));
         }

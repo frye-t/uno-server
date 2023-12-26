@@ -3,7 +3,12 @@ import cors from 'cors';
 import { createServer } from 'http';
 import { Server } from 'socket.io';
 import { GameController } from './controllers/gameController';
+import PlayerController from './controllers/playerController';
 import generateRoomCode from './utils/generateRoomCode';
+import { UNOGameFactory } from './utils/unoGameFactory';
+import { UNOPlayer } from './models/unoPlayer';
+import { UNOCard } from './models/unoCard';
+import { UNODeck } from './models/unoDeck';
 
 const app = express();
 const httpServer = createServer(app);
@@ -12,7 +17,9 @@ const io = new Server(httpServer, {
 });
 
 const activeRooms: string[] = [];
-const gameControllers: Record<string, GameController> = {};
+const gameControllers: Record<string, GameController<UNOPlayer, UNOCard, UNODeck>> = {};
+const playerControllers: Record<string, PlayerController<UNOPlayer, UNOCard>> = {};
+const gameFactory = new UNOGameFactory();
 
 app.use(cors());
 
@@ -30,14 +37,22 @@ app.get('/getRoomCode', (req, res) => {
 io.on('connect', (socket) => {
   console.log('A user connected');
   let room: string;
+  // let gc: GameController;
+  // let playerController: PlayerController;
 
   socket.on('hostRoom', (data) => {
     console.log('Got hostRoom Message', data);
     const {roomCode} = data;
     room = roomCode;
     socket.join(roomCode);
-    const gameController = new GameController(io, room);
+    // const playerController = new PlayerController();
+    // playerController = pc;
+    // const gameController = new GameController(io, room, playerController);
+    const playerController = gameFactory.createPlayerController();
+    const gameController = gameFactory.createGameController(io, roomCode, playerController);
+    // gc = gameController;
     gameControllers[roomCode] = gameController;
+    playerControllers[roomCode] = playerController;
     gameController.playerJoined(socket);
   });
 
@@ -58,14 +73,47 @@ io.on('connect', (socket) => {
 
   socket.on('startGame', () => {
     console.log("startGame received");
+    const playerController = playerControllers[room];
+    playerController.resetHands();
     const gameController = gameControllers[room];
-    console.log("Starting game for:", gameController);
-    gameController.startGame();
+    console.log("Starting game for a room:");
+    const unoPlayers = playerController.getPlayers();
+    const unoGame = gameFactory.createGame(unoPlayers);
+    gameController.startGame(unoGame);
   })
 
   socket.on('message', () => {
     console.log("Got a message, sending to room:", room)
     io.to(room).emit("messageReceived");
+  })
+
+  socket.on('drawCard', (data) => {
+    const playerController = playerControllers[room];
+    const gameController = gameControllers[room];
+    const player = playerController.getPlayerBySocket(socket);
+    if (player) {
+      gameController.handlePlayerAction('draw', player)
+    }
+  })
+
+  socket.on('playCard', (data) => {
+    console.log("Player played card:", data)
+    const playerController = playerControllers[room];
+    const gameController = gameControllers[room];
+    const player = playerController.getPlayerBySocket(socket);
+    if (player) {
+      gameController.handlePlayerAction('play', player, data)
+    }
+  })
+
+  socket.on('additionalAction', (data) => {
+    console.log('in additionalAction:', data)
+    const playerController = playerControllers[room];
+    const gameController = gameControllers[room];
+    const player = playerController.getPlayerBySocket(socket);
+    if (player) {
+      gameController.handlePlayerAction('additionalAction', player, data);
+    }
   })
 });
 

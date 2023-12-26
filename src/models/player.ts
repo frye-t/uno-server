@@ -1,22 +1,34 @@
+import { ActionData } from '../types/ActionData';
 import {UNOCard} from './unoCard';
+import { Card } from './card';
 import { Socket } from 'socket.io';
 
-export class Player {
+export class Player<TCard extends Card> {
   private id: string;
-  private hand: UNOCard[];
+  private hand: TCard[];
 
-  constructor(id: string) {
-    this.id = id;
+  constructor() {
+    this.id = '';
     this.hand = [];
   }
 
-  drawCard(card: UNOCard): void {
+  init(id: string) {
+    this.id = id;
+  }
+
+  drawCard(card: TCard): void {
     this.hand.push(card);
   }
 
-  playCard(): void {}
+  playCard(card: TCard): void {
+    this.hand = this.hand.filter(c => c != card);
+  }
 
-  addCardToHand(card: UNOCard): void {
+  findCard(cardData: ActionData): TCard | null {
+    return this.hand.find(card => card.getSuit() === cardData.suit && card.getRank() === cardData.rank) || null
+  }
+
+  addCardToHand(card: TCard): void {
     this.hand.push(card);
   }
 
@@ -28,11 +40,15 @@ export class Player {
     return this.id;
   }
 
-  getHand(): UNOCard[] {
+  getHand(): TCard[] {
     return this.hand.slice();
   }
 
   getHandSize(): number {
     return this.hand.length;
+  }
+
+  resetHand(): void {
+    this.hand = [];
   }
 }
