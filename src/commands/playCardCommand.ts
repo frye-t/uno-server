@@ -1,13 +1,13 @@
-import {UNOCard} from '../models/unoCard';
 import {Player} from '../models/player';
 import { GameCommand } from './gameCommand';
+import { Card } from '../models/card';
 
-export class PlayCardCommand implements GameCommand {
-  private player: Player;
-  private card: UNOCard;
+export class PlayCardCommand<TCard extends Card> implements GameCommand {
+  private player: Player<TCard>;
+  private card: TCard;
   private playCard: () => void;
 
-  constructor(player: Player, card: UNOCard, playCard: () => void) {
+  constructor(player: Player<TCard>, card: TCard, playCard: () => void) {
     this.player = player;
     this.card = card;
     this.playCard = playCard;

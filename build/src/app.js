@@ -7,9 +7,8 @@ const express_1 = __importDefault(require("express"));
 const cors_1 = __importDefault(require("cors"));
 const http_1 = require("http");
 const socket_io_1 = require("socket.io");
-const gameController_1 = require("./controllers/gameController");
-const playerController_1 = __importDefault(require("./controllers/playerController"));
 const generateRoomCode_1 = __importDefault(require("./utils/generateRoomCode"));
+const unoGameFactory_1 = require("./utils/unoGameFactory");
 const app = (0, express_1.default)();
 const httpServer = (0, http_1.createServer)(app);
 const io = new socket_io_1.Server(httpServer, {
@@ -18,6 +17,7 @@ const io = new socket_io_1.Server(httpServer, {
 const activeRooms = [];
 const gameControllers = {};
 const playerControllers = {};
+const gameFactory = new unoGameFactory_1.UNOGameFactory();
 app.use((0, cors_1.default)());
 app.get('/', (req, res) => {
     res.send('Hello world!!!');
@@ -38,9 +38,11 @@ io.on('connect', (socket) => {
         const { roomCode } = data;
         room = roomCode;
         socket.join(roomCode);
-        const playerController = new playerController_1.default();
+        // const playerController = new PlayerController();
         // playerController = pc;
-        const gameController = new gameController_1.GameController(io, room, playerController);
+        // const gameController = new GameController(io, room, playerController);
+        const playerController = gameFactory.createPlayerController();
+        const gameController = gameFactory.createGameController(io, roomCode, playerController);
         // gc = gameController;
         gameControllers[roomCode] = gameController;
         playerControllers[roomCode] = playerController;
@@ -89,27 +91,12 @@ io.on('connect', (socket) => {
         }
     });
     socket.on('additionalAction', (data) => {
+        console.log('in additionalAction:', data);
         const playerController = playerControllers[room];
         const gameController = gameControllers[room];
         const player = playerController.getPlayerBySocket(socket);
         if (player) {
             gameController.handlePlayerAction('additionalAction', player, data);
-        }
-    });
-    socket.on('confirmChallenge', () => {
-        const playerController = playerControllers[room];
-        const gameController = gameControllers[room];
-        const player = playerController.getPlayerBySocket(socket);
-        if (player) {
-            gameController.handlePlayerAction('challengeDrawFour', player);
-        }
-    });
-    socket.on('discardChallenge', () => {
-        const playerController = playerControllers[room];
-        const gameController = gameControllers[room];
-        const player = playerController.getPlayerBySocket(socket);
-        if (player) {
-            gameController.handlePlayerAction('discardChallenge', player);
         }
     });
 });

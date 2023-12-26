@@ -5,6 +5,10 @@ import { Server } from 'socket.io';
 import { GameController } from './controllers/gameController';
 import PlayerController from './controllers/playerController';
 import generateRoomCode from './utils/generateRoomCode';
+import { UNOGameFactory } from './utils/unoGameFactory';
+import { UNOPlayer } from './models/unoPlayer';
+import { UNOCard } from './models/unoCard';
+import { UNODeck } from './models/unoDeck';
 
 const app = express();
 const httpServer = createServer(app);
@@ -13,8 +17,9 @@ const io = new Server(httpServer, {
 });
 
 const activeRooms: string[] = [];
-const gameControllers: Record<string, GameController> = {};
-const playerControllers: Record<string, PlayerController> = {};
+const gameControllers: Record<string, GameController<UNOPlayer, UNOCard, UNODeck>> = {};
+const playerControllers: Record<string, PlayerController<UNOPlayer, UNOCard>> = {};
+const gameFactory = new UNOGameFactory();
 
 app.use(cors());
 
@@ -40,9 +45,11 @@ io.on('connect', (socket) => {
     const {roomCode} = data;
     room = roomCode;
     socket.join(roomCode);
-    const playerController = new PlayerController();
+    // const playerController = new PlayerController();
     // playerController = pc;
-    const gameController = new GameController(io, room, playerController);
+    // const gameController = new GameController(io, room, playerController);
+    const playerController = gameFactory.createPlayerController();
+    const gameController = gameFactory.createGameController(io, roomCode, playerController);
     // gc = gameController;
     gameControllers[roomCode] = gameController;
     playerControllers[roomCode] = playerController;
@@ -66,9 +73,13 @@ io.on('connect', (socket) => {
 
   socket.on('startGame', () => {
     console.log("startGame received");
+    const playerController = playerControllers[room];
+    playerController.resetHands();
     const gameController = gameControllers[room];
     console.log("Starting game for a room:");
-    gameController.startGame();
+    const unoPlayers = playerController.getPlayers();
+    const unoGame = gameFactory.createGame(unoPlayers);
+    gameController.startGame(unoGame);
   })
 
   socket.on('message', () => {

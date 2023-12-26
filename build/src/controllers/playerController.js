@@ -1,17 +1,23 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-const player_1 = require("../models/player");
 class PlayerController {
-    constructor() {
+    constructor(createPlayerFn) {
         this.players = new Map();
         this.sockets = new Map();
+        this.createPlayerFn = createPlayerFn;
     }
-    addPlayer(socket) {
+    addPlayer(socket, player) {
         const newPlayerId = this.generatePlayerId();
-        const newPlayer = new player_1.Player(newPlayerId);
-        this.players.set(newPlayerId, newPlayer);
+        // const newPlayer = new Player(newPlayerId);
+        this.players.set(newPlayerId, player);
         this.sockets.set(newPlayerId, socket);
         console.log("in PC adding player");
+    }
+    createPlayer() {
+        const player = this.createPlayerFn();
+        const id = this.generatePlayerId();
+        player.init(id);
+        return player;
     }
     getPlayers() {
         return Array.from(this.players.values());

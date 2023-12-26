@@ -4,28 +4,30 @@ import { EventManager } from '../services/eventManager';
 import { Socket, Server } from 'socket.io';
 import { GameState } from '../types/GameState';
 import PlayerController from './playerController';
+import { UNOPlayer } from '../models/unoPlayer';
 import { Observer } from '../types/Observer';
+import { Card } from '../models/card';
+import { Deck } from '../models/deck';
 // import shortUUID from 'short-uuid';
 
-export class GameController implements Observer {
+export class GameController<TPlayer extends Player<TCard>, TCard extends Card, TDeck extends Deck<TCard>> implements Observer<TCard> {
   private io: Server;
   private roomCode: string;
-  private players: Player[];
-  private sockets: Map<string, Socket>;
-  private game: Game | null = null;
-  private playerController: PlayerController;
+  private game: Game<TPlayer, TCard, TDeck> | null = null;
+
+  private playerController: PlayerController<TPlayer, TCard>;
   private isNewGameSetup: boolean = false;
 
-  constructor(io: Server, roomCode: string, playerController: PlayerController) {
+  constructor(io: Server, roomCode: string, playerController: PlayerController<TPlayer, TCard>) {
     this.io = io;
     this.roomCode = roomCode;
-    this.players = [];
-    this.sockets = new Map();
+    // this.players = [];
+    // this.sockets = new Map();
     this.playerController = playerController;
     this.bindSocketEvents();
   }
 
-  update(gameState: GameState): void {
+  update(gameState: GameState<TCard>): void {
     this.sendStateToPlayers(gameState);
 
     if (this.isNewGameSetup) {
@@ -40,6 +42,20 @@ export class GameController implements Observer {
       this.sendMessage(playerId, actionRequired)
     }
   }
+  
+  updateAsymmetricState(state: string): void {
+    const players = this.playerController.getPlayers();
+    const currentPlayerId = this.game?.getCurrentTurnPlayerId();
+    const selfMessage = state + 'Self'
+    for (const player of players) {
+      const pId = player.getId();
+      if (pId === currentPlayerId) {
+        this.sendMessage(pId, selfMessage)
+      } else {
+        this.sendMessage(pId, state, currentPlayerId)
+      }
+    }
+  }
 
   nextTurnStart(): void {
     this.initiateTurn();
@@ -52,7 +68,10 @@ export class GameController implements Observer {
     // const player = new Player(newPlayerId);
     // this.players.push(player);
     // this.sockets.set(newPlayerId, socket);
-    this.playerController.addPlayer(socket);
+    // const newPlayerId = this.playerController.generatePlayerId();
+    // const newPlayer = new UNOPlayer(newPlayerId);
+    const newPlayer = this.playerController.createPlayer();
+    this.playerController.addPlayer(socket, newPlayer);
     this.sendMessageToRoom('playerJoined', null);
   }
 
@@ -60,8 +79,8 @@ export class GameController implements Observer {
   //   return (this.players.length + 1).toString();
   // }
 
-  startGame(): void {
-    this.game = new Game(this.playerController.getPlayers());
+  startGame(game: Game<TPlayer, TCard, TDeck>): void {
+    this.game = game;
     this.game.addObserver(this);
     this.isNewGameSetup = true;
     this.game.start();
@@ -98,7 +117,7 @@ export class GameController implements Observer {
     }
   }
 
-  handlePlayerAction(action: string, player: Player, cardData?: { id: number, suit: string, rank: string }): void {
+  handlePlayerAction(action: string, player: TPlayer, cardData?: { id: number, suit: string, rank: string }): void {
     if (!this.game) {
       console.error('Game is not initialized');
       return;
@@ -123,7 +142,7 @@ export class GameController implements Observer {
     }
   }
 
-  private sendStateToPlayers(gameState: GameState): void {
+  private sendStateToPlayers(gameState: GameState<TCard>): void {
     const players = this.playerController.getPlayers();
     for (const player of players) {
       const playerId = player.getId();

@@ -1,28 +1,38 @@
 import { Socket } from 'socket.io';
 import { Player } from '../models/player';
+import { Card } from '../models/card';
 
-class PlayerController {
-  private players: Map<string, Player>;
+class PlayerController<T extends Player<Card>, TCard extends Card> {
+  private players: Map<string, T>;
   private sockets: Map<string, Socket>;
+  private createPlayerFn: () => T;
 
-  constructor() {
+  constructor(createPlayerFn: () => T) {
     this.players = new Map();
     this.sockets = new Map();
+    this.createPlayerFn = createPlayerFn;
   }
 
-  addPlayer(socket: Socket) {
+  addPlayer(socket: Socket, player: T) {
     const newPlayerId = this.generatePlayerId()
-    const newPlayer = new Player(newPlayerId);
-    this.players.set(newPlayerId, newPlayer);
+    // const newPlayer = new Player(newPlayerId);
+    this.players.set(newPlayerId, player);
     this.sockets.set(newPlayerId, socket);
     console.log("in PC adding player")
   }
 
-  getPlayers() {
+  createPlayer(): T  {
+    const player = this.createPlayerFn();
+    const id = this.generatePlayerId();
+    player.init(id);
+    return player;
+  }
+
+  getPlayers(): Array<T> {
     return Array.from(this.players.values());
   }
 
-  getPlayerById(playerId: string): Player | undefined {
+  getPlayerById(playerId: string): T | undefined {
     return this.players.get(playerId);
   }
 
@@ -30,7 +40,7 @@ class PlayerController {
     return this.sockets.get(playerId);
   }
 
-  getPlayerBySocket(socket: Socket): Player | undefined {
+  getPlayerBySocket(socket: Socket): T | undefined {
     for (const [playerId, playerSocket] of this.sockets.entries()) {
       if (playerSocket === socket) {
         return this.players.get(playerId);
@@ -50,8 +60,14 @@ class PlayerController {
     return undefined;
   }
 
-  private generatePlayerId(): string {
+  generatePlayerId(): string {
     return (this.players.size + 1).toString();
+  }
+
+  resetHands() {
+    for (const player of this.players.values()) {
+      player.resetHand();
+    }
   }
 }
 

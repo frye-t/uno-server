@@ -8,31 +8,38 @@ import { GameCommand } from '../commands/gameCommand';
 import { PlayCardCommand } from '../commands/playCardCommand';
 import { ActionData } from '../types/ActionData';
 import { AdditionalActionCommand } from '../commands/additionalActionCommand';
+import { UNOPlayer } from './unoPlayer';
+import { Card } from './card';
+import { Deck } from './deck';
 
-export class Game {
-  private players: Player[];
+export class Game<TPlayer extends Player<TCard>, TCard extends Card, TDeck extends Deck<TCard>> {
+  private players: TPlayer[];
   private currentPlayerIndex: number;
-  private deck: UNODeck;
-  private discardPile: UNOCard[];
+  private deck: TDeck;
+  private discardPile: TCard[];
   private isClockwiseTurnOrder: boolean;
   private isPlayerActionRequired: boolean;
   private activeColor: string | null;
   private activeNumber: string | null;
   private lastActionCard: { type: string; processed: boolean };
+
+  // Flags for controlling turn start/end
   private needsDrawAction: boolean;
   private needsDrawFourAction: boolean;
   private isChallengeInProgress: boolean;
   private playerWonChallenge: boolean;
 
-  private observers: Observer[] = [];
+  private observers: Observer<TCard>[] = [];
 
-  constructor(players: Player[]) {
+  constructor(players: TPlayer[], deck: TDeck) {
     this.players = players;
     this.currentPlayerIndex = 0;
-    this.deck = new UNODeck();
+    this.deck = deck;
     this.discardPile = [];
     this.isClockwiseTurnOrder = true;
-    this.deck.init();
+    if (this.deck instanceof UNODeck) {
+      this.deck.init();
+    }
     this.deck.shuffle();
     this.activeColor = null;
     this.activeNumber = null;
@@ -47,11 +54,11 @@ export class Game {
     this.playerWonChallenge = false;
   }
 
-  addObserver(observer: Observer) {
+  addObserver(observer: Observer<TCard>) {
     this.observers.push(observer);
   }
 
-  removeObserver(observer: Observer) {
+  removeObserver(observer: Observer<TCard>) {
     this.observers = this.observers.filter((obs) => obs != observer);
   }
 
@@ -64,6 +71,12 @@ export class Game {
   notifyPlayerAdditionalAction(actionRequired: string) {
     for (let observer of this.observers) {
       observer.requirePlayerAdditionalAction(actionRequired);
+    }
+  }
+
+  notifyAsymmetricState(state: string) {
+    for (let observer of this.observers) {
+      observer.updateAsymmetricState(state);
     }
   }
 
@@ -88,14 +101,16 @@ export class Game {
 
   private dealStartingHands(): void {
     // TODO: Fix this back to 7
-    for (let i = 0; i < 3; i++) {
+    this.needsDrawAction = true;
+    for (let i = 0; i < 2; i++) {
       for (const player of this.players) {
         this.performAction('draw', player);
       }
     }
+    this.needsDrawAction = false;
   }
 
-  performAction(action: string, player: Player, data?: ActionData): void {
+  performAction(action: string, player: TPlayer, data?: ActionData): void {
     let command: GameCommand | null = null;
     console.log('Performing an Action', action, data);
     switch (action) {
@@ -111,18 +126,20 @@ export class Game {
             command = new PlayCardCommand(player, cardToPlay, () =>
               this.playCard(cardToPlay)
             );
-            if (cardToPlay.isWildCard()) {
-              this.notifyPlayerAdditionalAction('chooseColor');
-              this.isPlayerActionRequired = true;
-              if (cardToPlay.isWildDrawFour()) {
-                console.log('Wild Draw Four Played!');
-                this.needsDrawFourAction = true;
+            if (cardToPlay instanceof UNOCard) {
+              if (cardToPlay.isWildCard()) {
+                this.notifyPlayerAdditionalAction('chooseColor');
+                this.isPlayerActionRequired = true;
+                if (cardToPlay.isWildDrawFour()) {
+                  console.log('Wild Draw Four Played!');
+                  this.needsDrawFourAction = true;
+                }
               }
-            }
-            if (cardToPlay.isActionCard()) {
-              console.log('Action Card Played');
-              this.lastActionCard.type = cardToPlay.getNumber();
-              this.lastActionCard.processed = false;
+              if (cardToPlay.isActionCard()) {
+                console.log('Action Card Played');
+                this.lastActionCard.type = cardToPlay.getNumber();
+                this.lastActionCard.processed = false;
+              }
             }
           } else {
             console.error('Invalid card played');
@@ -160,7 +177,8 @@ export class Game {
 
     if (command) {
       command.execute();
-      this.notifyObservers();
+      // possibly don't need this notify, will test later
+      // this.notifyObservers();
       // Don't end turn if another action is required,
       // a draw action is taking place, or a player won a challenge
       if (
@@ -171,6 +189,7 @@ export class Game {
         this.endTurn();
       } else if (this.playerWonChallenge) {
         this.playerWonChallenge = false;
+        this.notifyObservers();
       }
     } else {
       console.error(
@@ -180,47 +199,81 @@ export class Game {
   }
 
   private doesChallengeWin(): boolean {
-    return false;
+    return true;
   }
 
   private endTurn(): void {
     this.notifyObservers();
 
+    // TODO: Fix bug with Wild-Draw4 giving UNO
+    this.checkUno();
+
+    if (this.checkEmptyHand()) {
+      // do sometihng
+    } else {
+      this.checkActionCard();
+      this.startNextTurn();
+      this.checkDrawFourChallengeNeeded();
+    }
+  }
+
+  private checkUno() {
+    console.log('CurrentPlayerIdx:', this.currentPlayerIndex);
+    const currentPlayer = this.getCurrentPlayer();
+    if (currentPlayer instanceof UNOPlayer && currentPlayer.hasUno()) {
+      console.log('A player has UNO! Player:', this.currentPlayerIndex);
+      this.notifyAsymmetricState('uno');
+    }
+  }
+
+  private checkEmptyHand(): boolean {
+    const currentPlayer = this.getCurrentPlayer();
+    if (currentPlayer instanceof UNOPlayer && currentPlayer.hasEmptyHand()) {
+      console.log('A player emptied their hand', this.currentPlayerIndex);
+      this.notifyAsymmetricState('roundOver');
+      return true;
+    }
+    return false;
+  }
+
+  private checkActionCard() {
     if (!this.isPlayerActionRequired) {
       if (!this.lastActionCard.processed) {
         this.handleActionCard(this.lastActionCard.type);
       }
     }
+  }
 
+  private startNextTurn() {
     this.setNextPlayerIndex();
     this.notifyNextTurn();
+  }
 
+  private checkDrawFourChallengeNeeded() {
     if (this.needsDrawFourAction && !this.isChallengeInProgress) {
       // Handle beginning a challenge on next turn
       this.notifyPlayerAdditionalAction('challenge');
       this.isChallengeInProgress = true;
-    } 
-    // else if (!this.isPlayerActionRequired && !this.playerWonChallenge) {
-    //   // Handle Next Turn as normal
-    //   this.setNextPlayerIndex();
-    //   this.notifyNextTurn();
-    // }
+    }
   }
 
   private resolveChallenge(challengeResult: boolean): void {
     if (challengeResult) {
-      this.handleDrawN(this.players[this.getPreviousPlayerIndex()], 4);
+      // Draw 4 for previous player, as challenger won
+      this.handleDrawN(this.getPreviousPlayer(), 4);
       this.notifyPlayerAdditionalAction('challengeWin');
       this.playerWonChallenge = true;
     } else {
-      this.handleDrawN(this.players[this.currentPlayerIndex], 6);
+      // Draw 6 for currnet player, as challenger lost
+      this.handleDrawN(this.getCurrentPlayer(), 6);
     }
     this.isChallengeInProgress = false;
     this.needsDrawFourAction = false;
   }
 
   private resolveNoChallenge(): void {
-    this.handleDrawN(this.players[this.currentPlayerIndex], 4);
+    // Draw four for current player, as they did not challenge Draw4
+    this.handleDrawN(this.getCurrentPlayer(), 4);
     this.needsDrawFourAction = false;
     this.isChallengeInProgress = false;
   }
@@ -229,11 +282,11 @@ export class Game {
     this.activeColor = color;
   }
 
-  private drawCard(): UNOCard {
+  private drawCard(): TCard {
     return this.deck.draw();
   }
 
-  private playCard(card: UNOCard): void {
+  private playCard(card: TCard): void {
     this.discardPile.push(card);
     this.notifyObservers();
   }
@@ -244,7 +297,7 @@ export class Game {
     this.discardPile.unshift(topCard);
   }
 
-  getCurrentGameState(): GameState {
+  getCurrentGameState(): GameState<TCard> {
     const gameState = {
       players: this.players.map((player) => ({
         id: player.getId(),
@@ -287,13 +340,27 @@ export class Game {
     return (this.currentPlayerIndex + incrementer + playerCount) % playerCount;
   }
 
-  private isValidPlay(card: UNOCard): boolean {
+  private getCurrentPlayer(): TPlayer {
+    console.log('players:', this.players);
+    console.log('currentPlayerIndex', this.currentPlayerIndex);
+    return this.players[this.currentPlayerIndex];
+  }
+
+  private getPreviousPlayer(): TPlayer {
+    return this.players[this.getPreviousPlayerIndex()];
+  }
+
+  private getNextPlayer(): TPlayer {
+    return this.players[this.getNextPlayerIndex()];
+  }
+
+  private isValidPlay(card: TCard): boolean {
     return true;
     // const topCard = this.discardPile[this.discardPile.length - 1];
     // return topCard.cardPlayableOnTop(card);
   }
 
-  private handleDrawN(player: Player, cardsToDraw: number): void {
+  private handleDrawN(player: TPlayer, cardsToDraw: number): void {
     // Need this flag to avoid turn skipping on action execution
     this.needsDrawAction = true;
     for (let i = 0; i < cardsToDraw; i++) {

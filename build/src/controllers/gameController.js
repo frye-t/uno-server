@@ -5,12 +5,14 @@ const game_1 = require("../models/game");
 // import shortUUID from 'short-uuid';
 class GameController {
     constructor(io, roomCode, playerController) {
+        // private players: Player[];
+        // private sockets: Map<string, Socket>;
         this.game = null;
         this.isNewGameSetup = false;
         this.io = io;
         this.roomCode = roomCode;
-        this.players = [];
-        this.sockets = new Map();
+        // this.players = [];
+        // this.sockets = new Map();
         this.playerController = playerController;
         this.bindSocketEvents();
     }
@@ -28,6 +30,21 @@ class GameController {
             this.sendMessage(playerId, actionRequired);
         }
     }
+    updateAsymmetricState(state) {
+        var _a;
+        const players = this.playerController.getPlayers();
+        const currentPlayerId = (_a = this.game) === null || _a === void 0 ? void 0 : _a.getCurrentTurnPlayerId();
+        const selfMessage = state + 'Self';
+        for (const player of players) {
+            const pId = player.getId();
+            if (pId === currentPlayerId) {
+                this.sendMessage(pId, selfMessage);
+            }
+            else {
+                this.sendMessage(pId, state, currentPlayerId);
+            }
+        }
+    }
     nextTurnStart() {
         this.initiateTurn();
     }
@@ -37,7 +54,10 @@ class GameController {
         // const player = new Player(newPlayerId);
         // this.players.push(player);
         // this.sockets.set(newPlayerId, socket);
-        this.playerController.addPlayer(socket);
+        // const newPlayerId = this.playerController.generatePlayerId();
+        // const newPlayer = new UNOPlayer(newPlayerId);
+        const newPlayer = this.playerController.createPlayer();
+        this.playerController.addPlayer(socket, newPlayer);
         this.sendMessageToRoom('playerJoined', null);
     }
     // private generatePlayerId(): string {

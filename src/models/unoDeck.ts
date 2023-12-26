@@ -17,28 +17,29 @@ export class UNODeck extends Deck<UNOCard> {
     const actionCards = ['Draw2', 'Draw2', 'Draw2'];
     const wildCards = ['Card', 'Draw4'];
 
-    for (const color of colors) {
-    //   for (const number of numbers) {
-    //     cards.push(CardFactory.createNumberCard(number, color));
-    //     if (number !== '0') {
-    //       cards.push(CardFactory.createNumberCard(number, color));
+    // for (const color of colors) {
+      //   for (const number of numbers) {
+      //     cards.push(CardFactory.createNumberCard(number, color));
+      //     if (number !== '0') {
+      //       cards.push(CardFactory.createNumberCard(number, color));
+      //     }
+      //   }
+
+    //   for (const action of actionCards) {
+    //     // Remove this inner for loop
+    //     for (let i = 0; i < 10; i++) {
+    //       // Testing only
+    //       cards.push(CardFactory.createActionCard(action, color));
+    //       cards.push(CardFactory.createActionCard(action, color));
     //     }
     //   }
-
-      for (const action of actionCards) {
-        // Remove this inner for loop
-        // for (let i = 0; i < 10; i++) { // Testing only
-        cards.push(CardFactory.createActionCard(action, color));
-        cards.push(CardFactory.createActionCard(action, color));
-        // }
-      }
-    }
+    // }
 
     // TODO: Change this back to 4
-    // for (let i = 0; i < 20; i++) {
-    //   cards.push(CardFactory.createWildCard(wildCards[0]));
-    //   cards.push(CardFactory.createWildCard(wildCards[1]));
-    // }
+    for (let i = 0; i < 20; i++) {
+      cards.push(CardFactory.createWildCard(wildCards[0]));
+      cards.push(CardFactory.createWildCard(wildCards[1]));
+    }
 
     this.setCards(cards);
   }
