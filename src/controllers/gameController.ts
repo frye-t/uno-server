@@ -10,7 +10,12 @@ import { Card } from '../models/card';
 import { Deck } from '../models/deck';
 // import shortUUID from 'short-uuid';
 
-export class GameController<TPlayer extends Player<TCard>, TCard extends Card, TDeck extends Deck<TCard>> implements Observer<TCard> {
+export class GameController<
+  TPlayer extends Player<TCard>,
+  TCard extends Card,
+  TDeck extends Deck<TCard>,
+> implements Observer<TCard>
+{
   private io: Server;
   private roomCode: string;
   private game: Game<TPlayer, TCard, TDeck> | null = null;
@@ -18,13 +23,21 @@ export class GameController<TPlayer extends Player<TCard>, TCard extends Card, T
   private playerController: PlayerController<TPlayer, TCard>;
   private isNewGameSetup: boolean = false;
 
-  constructor(io: Server, roomCode: string, playerController: PlayerController<TPlayer, TCard>) {
+  private playersLoaded: number;
+
+  constructor(
+    io: Server,
+    roomCode: string,
+    playerController: PlayerController<TPlayer, TCard>
+  ) {
     this.io = io;
     this.roomCode = roomCode;
     // this.players = [];
     // this.sockets = new Map();
     this.playerController = playerController;
     this.bindSocketEvents();
+
+    this.playersLoaded = 0;
   }
 
   update(gameState: GameState<TCard>): void {
@@ -35,24 +48,37 @@ export class GameController<TPlayer extends Player<TCard>, TCard extends Card, T
     }
   }
 
-  requirePlayerAdditionalAction(actionRequired: string): void {
-    console.log("Need additional action:", actionRequired);
-    const playerId = this.game?.getCurrentTurnPlayerId();
-    if (playerId){
-      this.sendMessage(playerId, actionRequired)
+  playerLoaded(player: TPlayer) {
+    this.playersLoaded += 1;
+    const playerId = player.getId();
+    this.sendMessage(playerId, 'informPlayerId', { playerId });
+
+    if (this.playersLoaded === this.playerController.getNumberOfPlayers()) {
+      this.sendMessageToRoom(
+        'allPlayersLoaded',
+        {playerCount: this.playerController.getNumberOfPlayers()}
+      );
     }
   }
-  
+
+  requirePlayerAdditionalAction(actionRequired: string): void {
+    console.log('Need additional action:', actionRequired);
+    const playerId = this.game?.getCurrentTurnPlayerId();
+    if (playerId) {
+      this.sendMessage(playerId, actionRequired);
+    }
+  }
+
   updateAsymmetricState(state: string): void {
     const players = this.playerController.getPlayers();
     const currentPlayerId = this.game?.getCurrentTurnPlayerId();
-    const selfMessage = state + 'Self'
+    const selfMessage = state + 'Self';
     for (const player of players) {
       const pId = player.getId();
       if (pId === currentPlayerId) {
-        this.sendMessage(pId, selfMessage)
+        this.sendMessage(pId, selfMessage);
       } else {
-        this.sendMessage(pId, state, currentPlayerId)
+        this.sendMessage(pId, state, currentPlayerId);
       }
     }
   }
@@ -63,41 +89,28 @@ export class GameController<TPlayer extends Player<TCard>, TCard extends Card, T
 
   bindSocketEvents() {}
 
-  playerJoined(socket: Socket): void {
-    // const newPlayerId = this.generatePlayerId();
-    // const player = new Player(newPlayerId);
-    // this.players.push(player);
-    // this.sockets.set(newPlayerId, socket);
-    // const newPlayerId = this.playerController.generatePlayerId();
-    // const newPlayer = new UNOPlayer(newPlayerId);
-    const newPlayer = this.playerController.createPlayer();
+  playerJoined(socket: Socket, isHost: boolean): void {
+    const newPlayer = this.playerController.createPlayer(isHost);
     this.playerController.addPlayer(socket, newPlayer);
-    this.sendMessageToRoom('playerJoined', null);
+    const playerName = newPlayer.getName();
+    const playerId = newPlayer.getId();
+    isHost = newPlayer.getIsHost();
+    this.sendMessageToOthers(playerId, 'playerJoined', {playerName, playerId, isHost});
   }
 
-  // private generatePlayerId(): string {
-  //   return (this.players.length + 1).toString();
-  // }
 
-  startGame(game: Game<TPlayer, TCard, TDeck>): void {
+  setupGame(game: Game<TPlayer, TCard, TDeck>): void {
     this.game = game;
     this.game.addObserver(this);
     this.isNewGameSetup = true;
-    this.game.start();
     this.sendMessageToRoom('gameStarted', null);
 
-    // this.updateGameStateToClients();
-    // this.initiateTurn();
+    console.log("PlayerIDs:", this.playerController.getPlayerIds());
   }
 
-  // private updateGameStateToClients() {
-  //   if (this.game) {
-  //     const gameState = this.game.getCurrentGameState();
-  //     this.sendStateToPlayers(gameState);
-  //   } else {
-  //     console.error('Game is not initialized');
-  //   }
-  // }
+  startGame() {
+    this.game?.start();
+  }
 
   private initiateTurn() {
     if (this.game) {
@@ -117,7 +130,11 @@ export class GameController<TPlayer extends Player<TCard>, TCard extends Card, T
     }
   }
 
-  handlePlayerAction(action: string, player: TPlayer, cardData?: { id: number, suit: string, rank: string }): void {
+  handlePlayerAction(
+    action: string,
+    player: TPlayer,
+    cardData?: { id: number; suit: string; rank: string }
+  ): void {
     if (!this.game) {
       console.error('Game is not initialized');
       return;
@@ -157,9 +174,23 @@ export class GameController<TPlayer extends Player<TCard>, TCard extends Card, T
           }
         }),
       };
-
+      console.log('emitting gameState!');
+      // console.log("Checksum:", this.generateChecksum(playerGameState))
+      playerGameState.checksum = this.generateChecksum(playerGameState);
+      // console.log("Sending this game state:", playerGameState)
       this.sendMessage(playerId, 'gameState', JSON.stringify(playerGameState));
     }
+  }
+
+  generateChecksum(gameState: GameState<TCard>): number {
+    const str = JSON.stringify(gameState);
+    // console.log(str);
+    let hash = 5381;
+    for (let i =0; i < str.length; i++) {
+      hash = (hash * 33) ^ str.charCodeAt(i);
+    }
+
+    return hash >>> 0;
   }
 
   private sendMessage(playerId: string, messageType: string, data?: any) {
@@ -183,5 +214,13 @@ export class GameController<TPlayer extends Player<TCard>, TCard extends Card, T
 
   private sendMessageToRoom(messageType: string, data?: any) {
     this.io.to(this.roomCode).emit(messageType, data);
+  }
+
+  private sendMessageToOthers(sender: string, messageType: string, data?: any) {
+    const players = this.playerController.getPlayers().filter(p => p.getId() !== sender);
+    players.forEach(player => {
+      const socket = this.playerController.getPlayerSocketById(player.getId());
+      socket?.emit('playerJoined', data);
+    })
   }
 }

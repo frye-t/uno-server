@@ -4,19 +4,35 @@ exports.Player = void 0;
 class Player {
     constructor() {
         this.id = '';
+        this.name = '';
         this.hand = [];
+        this.isHost = false;
     }
-    init(id) {
+    init(id, isHost) {
         this.id = id;
+        this.name = 'Player ' + this.id;
+        this.isHost = isHost;
+    }
+    setName(name) {
+        this.name = name;
+    }
+    getName() {
+        return this.name;
+    }
+    getIsHost() {
+        return this.isHost;
+    }
+    makeHost() {
+        this.isHost = true;
     }
     drawCard(card) {
         this.hand.push(card);
     }
     playCard(card) {
-        this.hand = this.hand.filter(c => c != card);
+        this.hand = this.hand.filter((c) => c != card);
     }
     findCard(cardData) {
-        return this.hand.find(card => card.getColor() === cardData.suit && card.getNumber() === cardData.rank) || null;
+        return (this.hand.find((card) => card.getSuit() === cardData.suit && card.getRank() === cardData.rank) || null);
     }
     addCardToHand(card) {
         this.hand.push(card);
@@ -32,6 +48,9 @@ class Player {
     }
     getHandSize() {
         return this.hand.length;
+    }
+    resetHand() {
+        this.hand = [];
     }
 }
 exports.Player = Player;

@@ -13,5 +13,5 @@ export interface GameFactory<TPlayer extends Player<TCard>, TCard extends Card, 
     playerController: PlayerController<TPlayer, TCard>
   ): GameController<TPlayer, TCard, TDeck>;
   createPlayerController(): PlayerController<TPlayer, TCard>;
-  createGame(players: TPlayer[]): Game<TPlayer, TCard, TDeck>;
+  createGame(players: TPlayer[], playerController: PlayerController<TPlayer, TCard>): Game<TPlayer, TCard, TDeck>;
 }

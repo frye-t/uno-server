@@ -1,16 +1,23 @@
 import { ActionData } from '../types/ActionData';
-import { UNOCard } from './unoCard';
-export declare class Player {
+import { Card } from './card';
+export declare class Player<TCard extends Card> {
     private id;
+    private name;
     private hand;
+    private isHost;
     constructor();
-    init(id: string): void;
-    drawCard(card: UNOCard): void;
-    playCard(card: UNOCard): void;
-    findCard(cardData: ActionData): UNOCard | null;
-    addCardToHand(card: UNOCard): void;
+    init(id: string, isHost: boolean): void;
+    setName(name: string): void;
+    getName(): string;
+    getIsHost(): boolean;
+    makeHost(): void;
+    drawCard(card: TCard): void;
+    playCard(card: TCard): void;
+    findCard(cardData: ActionData): TCard | null;
+    addCardToHand(card: TCard): void;
     printHand(): void;
     getId(): string;
-    getHand(): UNOCard[];
+    getHand(): TCard[];
     getHandSize(): number;
+    resetHand(): void;
 }

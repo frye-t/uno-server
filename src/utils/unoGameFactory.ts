@@ -16,8 +16,8 @@ export class UNOGameFactory implements GameFactory<UNOPlayer, UNOCard, UNODeck> 
     return new PlayerController<UNOPlayer, UNOCard>(() => new UNOPlayer());
   }
 
-  createGame(players: UNOPlayer[]): Game<UNOPlayer, UNOCard, UNODeck> {
+  createGame(players: UNOPlayer[], playerController: PlayerController<UNOPlayer, UNOCard>): Game<UNOPlayer, UNOCard, UNODeck> {
     const unoDeck = new UNODeck();
-    return new Game<UNOPlayer, UNOCard, UNODeck>(players, unoDeck);
+    return new Game<UNOPlayer, UNOCard, UNODeck>(players, unoDeck, playerController);
   }
 }

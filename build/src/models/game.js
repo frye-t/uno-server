@@ -1,20 +1,25 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.Game = void 0;
+const unoCard_1 = require("./unoCard");
 const unoDeck_1 = require("./unoDeck");
 const drawCardCommand_1 = require("../commands/drawCardCommand");
 const playCardCommand_1 = require("../commands/playCardCommand");
 const additionalActionCommand_1 = require("../commands/additionalActionCommand");
 const unoPlayer_1 = require("./unoPlayer");
 class Game {
-    constructor(players) {
+    constructor(players, deck, playerController) {
         this.observers = [];
         this.players = players;
+        this.playerController = playerController;
+        this.turnOrder = playerController.getPlayerIds();
         this.currentPlayerIndex = 0;
-        this.deck = new unoDeck_1.UNODeck();
+        this.deck = deck;
         this.discardPile = [];
         this.isClockwiseTurnOrder = true;
-        this.deck.init();
+        if (this.deck instanceof unoDeck_1.UNODeck) {
+            this.deck.init();
+        }
         this.deck.shuffle();
         this.activeColor = null;
         this.activeNumber = null;
@@ -54,7 +59,15 @@ class Game {
             observer.nextTurnStart();
         }
     }
+    shuffleTurnOrder() {
+        for (let i = this.turnOrder.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [this.turnOrder[i], this.turnOrder[j]] = [this.turnOrder[j], this.turnOrder[i]];
+        }
+        console.log("SHUFFLED TURN ORDER:", this.turnOrder);
+    }
     start() {
+        this.shuffleTurnOrder();
         this.dealStartingHands();
         for (const player of this.players) {
             player.printHand();
@@ -66,15 +79,17 @@ class Game {
     }
     dealStartingHands() {
         // TODO: Fix this back to 7
-        for (let i = 0; i < 2; i++) {
+        this.needsDrawAction = true;
+        for (let i = 0; i < 7; i++) {
             for (const player of this.players) {
                 this.performAction('draw', player);
             }
         }
+        this.needsDrawAction = false;
     }
     performAction(action, player, data) {
         let command = null;
-        console.log('Performing an Action', action, data);
+        // console.log('Performing an Action', action, data);
         switch (action) {
             case 'draw':
                 command = new drawCardCommand_1.DrawCardCommand(player, () => this.drawCard());
@@ -86,18 +101,20 @@ class Game {
                     if (cardToPlay && this.isValidPlay(cardToPlay)) {
                         // check valid play
                         command = new playCardCommand_1.PlayCardCommand(player, cardToPlay, () => this.playCard(cardToPlay));
-                        if (cardToPlay.isWildCard()) {
-                            this.notifyPlayerAdditionalAction('chooseColor');
-                            this.isPlayerActionRequired = true;
-                            if (cardToPlay.isWildDrawFour()) {
-                                console.log('Wild Draw Four Played!');
-                                this.needsDrawFourAction = true;
+                        if (cardToPlay instanceof unoCard_1.UNOCard) {
+                            if (cardToPlay.isWildCard()) {
+                                this.notifyPlayerAdditionalAction('chooseColor');
+                                this.isPlayerActionRequired = true;
+                                if (cardToPlay.isWildDrawFour()) {
+                                    console.log('Wild Draw Four Played!');
+                                    this.needsDrawFourAction = true;
+                                }
                             }
-                        }
-                        if (cardToPlay.isActionCard()) {
-                            console.log('Action Card Played');
-                            this.lastActionCard.type = cardToPlay.getNumber();
-                            this.lastActionCard.processed = false;
+                            if (cardToPlay.isActionCard()) {
+                                console.log('Action Card Played');
+                                this.lastActionCard.type = cardToPlay.getNumber();
+                                this.lastActionCard.processed = false;
+                            }
                         }
                     }
                     else {
@@ -137,7 +154,7 @@ class Game {
         if (command) {
             command.execute();
             // possibly don't need this notify, will test later
-            this.notifyObservers();
+            // this.notifyObservers();
             // Don't end turn if another action is required,
             // a draw action is taking place, or a player won a challenge
             if (!this.isPlayerActionRequired &&
@@ -147,6 +164,7 @@ class Game {
             }
             else if (this.playerWonChallenge) {
                 this.playerWonChallenge = false;
+                this.notifyObservers();
             }
         }
         else {
@@ -158,10 +176,16 @@ class Game {
     }
     endTurn() {
         this.notifyObservers();
+        // TODO: Fix bug with Wild-Draw4 giving UNO
         this.checkUno();
-        this.checkActionCard();
-        this.startNextTurn();
-        this.checkDrawFourChallengeNeeded();
+        if (this.checkEmptyHand()) {
+            // do sometihng
+        }
+        else {
+            this.checkActionCard();
+            this.startNextTurn();
+            this.checkDrawFourChallengeNeeded();
+        }
     }
     checkUno() {
         console.log('CurrentPlayerIdx:', this.currentPlayerIndex);
@@ -170,6 +194,15 @@ class Game {
             console.log('A player has UNO! Player:', this.currentPlayerIndex);
             this.notifyAsymmetricState('uno');
         }
+    }
+    checkEmptyHand() {
+        const currentPlayer = this.getCurrentPlayer();
+        if (currentPlayer instanceof unoPlayer_1.UNOPlayer && currentPlayer.hasEmptyHand()) {
+            console.log('A player emptied their hand', this.currentPlayerIndex);
+            this.notifyAsymmetricState('roundOver');
+            return true;
+        }
+        return false;
     }
     checkActionCard() {
         if (!this.isPlayerActionRequired) {
@@ -221,6 +254,8 @@ class Game {
     }
     flipTopCard() {
         const topCard = this.drawCard();
+        this.activeColor = topCard.getSuit();
+        this.activeNumber = topCard.getRank();
         topCard.toggleVisible();
         this.discardPile.unshift(topCard);
     }
@@ -234,14 +269,22 @@ class Game {
             discardPile: this.discardPile,
             activeColor: this.activeColor,
             activeNumber: this.activeNumber,
+            turnOrder: this.turnOrder,
         };
+        this.players.forEach(player => {
+            console.log(player.getHand());
+        });
+        console.log("Game State:", gameState);
+        // console.log("Checksum:", this.checksum(gameState));
         return gameState;
     }
     getCurrentTurnPlayerId() {
         return this.players[this.currentPlayerIndex].getId();
     }
     getStartingPlayerIndex() {
-        return Math.floor(Math.random() * this.players.length);
+        // return Math.floor(Math.random() * this.players.length);
+        // Now shuffling turn order, so it should just be the first player in the turn order
+        return 0;
     }
     setNextPlayerIndex() {
         const incrementer = this.isClockwiseTurnOrder ? 1 : -1;

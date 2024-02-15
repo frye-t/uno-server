@@ -17,4 +17,5 @@ export interface GameState<TCard extends Card> {
     cardCount: number;
   }>;
   discardPile: TCard[];
+  checksum?: number;
 }

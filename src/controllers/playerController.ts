@@ -6,25 +6,38 @@ class PlayerController<T extends Player<Card>, TCard extends Card> {
   private players: Map<string, T>;
   private sockets: Map<string, Socket>;
   private createPlayerFn: () => T;
+  private currentPlayerId: number;
+  private currentTurnPlayerId: string;
 
   constructor(createPlayerFn: () => T) {
     this.players = new Map();
     this.sockets = new Map();
     this.createPlayerFn = createPlayerFn;
+    this.currentPlayerId = 1;
+
+    this.currentTurnPlayerId = '0';
   }
 
   addPlayer(socket: Socket, player: T) {
-    const newPlayerId = this.generatePlayerId()
+    console.log('Calling addPlayer');
+    const newPlayerId = player.getId();
     // const newPlayer = new Player(newPlayerId);
     this.players.set(newPlayerId, player);
     this.sockets.set(newPlayerId, socket);
-    console.log("in PC adding player")
+    console.log('in PC adding player');
   }
 
-  createPlayer(): T  {
+  removePlayer(playerId: string) {
+    console.log('Deleting Player:', playerId);
+    this.players.delete(playerId);
+    this.sockets.delete(playerId);
+  }
+
+  createPlayer(isHost: boolean): T {
+    console.log('Calling createPlayer');
     const player = this.createPlayerFn();
     const id = this.generatePlayerId();
-    player.init(id);
+    player.init(id, isHost);
     return player;
   }
 
@@ -32,8 +45,21 @@ class PlayerController<T extends Player<Card>, TCard extends Card> {
     return Array.from(this.players.values());
   }
 
+  getPlayerNames(): Array<string> {
+    console.log(this.getPlayers());
+    return this.getPlayers().map((player) => player.getName());
+  }
+
+  getNumberOfPlayers(): number {
+    return Array.from(this.players.values()).length;
+  }
+
   getPlayerById(playerId: string): T | undefined {
     return this.players.get(playerId);
+  }
+
+  getPlayerIds(): string[] {
+    return Array.from(this.players.keys());
   }
 
   getPlayerSocketById(playerId: string): Socket | undefined {
@@ -61,7 +87,9 @@ class PlayerController<T extends Player<Card>, TCard extends Card> {
   }
 
   generatePlayerId(): string {
-    return (this.players.size + 1).toString();
+    const id = this.currentPlayerId;
+    this.currentPlayerId++;
+    return id.toString();
   }
 
   resetHands() {
