@@ -1,9 +1,10 @@
-import { UNOCard } from "../models/unoCard";
-export interface GameState {
+import { Card } from "../models/card";
+export interface GameState<TCard extends Card> {
     players: Array<{
         id: string;
-        hand?: UNOCard[];
+        hand?: TCard[];
         cardCount: number;
     }>;
-    discardPile: UNOCard[];
+    discardPile: TCard[];
+    checksum?: number;
 }

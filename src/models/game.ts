@@ -11,9 +11,12 @@ import { AdditionalActionCommand } from '../commands/additionalActionCommand';
 import { UNOPlayer } from './unoPlayer';
 import { Card } from './card';
 import { Deck } from './deck';
+import PlayerController from '../controllers/playerController';
 
 export class Game<TPlayer extends Player<TCard>, TCard extends Card, TDeck extends Deck<TCard>> {
   private players: TPlayer[];
+  private playerController: PlayerController<TPlayer, TCard>;
+  private turnOrder: string[];
   private currentPlayerIndex: number;
   private deck: TDeck;
   private discardPile: TCard[];
@@ -30,12 +33,15 @@ export class Game<TPlayer extends Player<TCard>, TCard extends Card, TDeck exten
   private playerWonChallenge: boolean;
 
   private observers: Observer<TCard>[] = [];
-
-  constructor(players: TPlayer[], deck: TDeck) {
+  constructor(players: TPlayer[], deck: TDeck, playerController: PlayerController<TPlayer, TCard>) {
     this.players = players;
+    this.playerController = playerController;
+
+    this.turnOrder = playerController.getPlayerIds();
     this.currentPlayerIndex = 0;
     this.deck = deck;
     this.discardPile = [];
+
     this.isClockwiseTurnOrder = true;
     if (this.deck instanceof UNODeck) {
       this.deck.init();
@@ -86,7 +92,18 @@ export class Game<TPlayer extends Player<TCard>, TCard extends Card, TDeck exten
     }
   }
 
+  shuffleTurnOrder() {
+    for (let i = this.turnOrder.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+
+      [this.turnOrder[i], this.turnOrder[j]] = [this.turnOrder[j], this.turnOrder[i]];
+    }
+
+    console.log("SHUFFLED TURN ORDER:", this.turnOrder);
+  }
+
   start(): void {
+    this.shuffleTurnOrder()
     this.dealStartingHands();
 
     for (const player of this.players) {
@@ -96,13 +113,15 @@ export class Game<TPlayer extends Player<TCard>, TCard extends Card, TDeck exten
     this.flipTopCard();
     this.currentPlayerIndex = this.getStartingPlayerIndex();
     this.notifyObservers();
+    console.log("CurrentPlayerIdx:", this.currentPlayerIndex);
+    console.log(this.turnOrder);
     this.notifyNextTurn();
   }
 
   private dealStartingHands(): void {
     // TODO: Fix this back to 7
     this.needsDrawAction = true;
-    for (let i = 0; i < 2; i++) {
+    for (let i = 0; i < 7; i++) {
       for (const player of this.players) {
         this.performAction('draw', player);
       }
@@ -112,7 +131,7 @@ export class Game<TPlayer extends Player<TCard>, TCard extends Card, TDeck exten
 
   performAction(action: string, player: TPlayer, data?: ActionData): void {
     let command: GameCommand | null = null;
-    console.log('Performing an Action', action, data);
+    // console.log('Performing an Action', action, data);
     switch (action) {
       case 'draw':
         command = new DrawCardCommand(player, () => this.drawCard());
@@ -293,6 +312,8 @@ export class Game<TPlayer extends Player<TCard>, TCard extends Card, TDeck exten
 
   private flipTopCard(): void {
     const topCard = this.drawCard();
+    this.activeColor = topCard.getSuit();
+    this.activeNumber = topCard.getRank();
     topCard.toggleVisible();
     this.discardPile.unshift(topCard);
   }
@@ -307,17 +328,26 @@ export class Game<TPlayer extends Player<TCard>, TCard extends Card, TDeck exten
       discardPile: this.discardPile,
       activeColor: this.activeColor,
       activeNumber: this.activeNumber,
+      turnOrder: this.turnOrder,
     };
 
+    this.players.forEach(player => {
+      console.log(player.getHand());
+    })
+
+    console.log("Game State:", gameState);
+    // console.log("Checksum:", this.checksum(gameState));
     return gameState;
   }
 
   getCurrentTurnPlayerId(): string {
-    return this.players[this.currentPlayerIndex].getId();
+    return this.turnOrder[this.currentPlayerIndex]
   }
 
   private getStartingPlayerIndex(): number {
-    return Math.floor(Math.random() * this.players.length);
+    // return Math.floor(Math.random() * this.players.length);
+    // Now shuffling turn order, so it should just be the first player in the turn order
+    return 0;
   }
 
   private setNextPlayerIndex(): void {

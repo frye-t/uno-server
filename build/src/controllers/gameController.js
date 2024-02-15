@@ -1,12 +1,9 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.GameController = void 0;
-const game_1 = require("../models/game");
 // import shortUUID from 'short-uuid';
 class GameController {
     constructor(io, roomCode, playerController) {
-        // private players: Player[];
-        // private sockets: Map<string, Socket>;
         this.game = null;
         this.isNewGameSetup = false;
         this.io = io;
@@ -15,6 +12,7 @@ class GameController {
         // this.sockets = new Map();
         this.playerController = playerController;
         this.bindSocketEvents();
+        this.playersLoaded = 0;
     }
     update(gameState) {
         this.sendStateToPlayers(gameState);
@@ -22,9 +20,17 @@ class GameController {
             this.isNewGameSetup = false;
         }
     }
+    playerLoaded(player) {
+        this.playersLoaded += 1;
+        const playerId = player.getId();
+        this.sendMessage(playerId, 'informPlayerId', { playerId });
+        if (this.playersLoaded === this.playerController.getNumberOfPlayers()) {
+            this.sendMessageToRoom('allPlayersLoaded', { playerCount: this.playerController.getNumberOfPlayers() });
+        }
+    }
     requirePlayerAdditionalAction(actionRequired) {
         var _a;
-        console.log("Need additional action:", actionRequired);
+        console.log('Need additional action:', actionRequired);
         const playerId = (_a = this.game) === null || _a === void 0 ? void 0 : _a.getCurrentTurnPlayerId();
         if (playerId) {
             this.sendMessage(playerId, actionRequired);
@@ -49,37 +55,25 @@ class GameController {
         this.initiateTurn();
     }
     bindSocketEvents() { }
-    playerJoined(socket) {
-        // const newPlayerId = this.generatePlayerId();
-        // const player = new Player(newPlayerId);
-        // this.players.push(player);
-        // this.sockets.set(newPlayerId, socket);
-        // const newPlayerId = this.playerController.generatePlayerId();
-        // const newPlayer = new UNOPlayer(newPlayerId);
-        const newPlayer = this.playerController.createPlayer();
+    playerJoined(socket, isHost) {
+        const newPlayer = this.playerController.createPlayer(isHost);
         this.playerController.addPlayer(socket, newPlayer);
-        this.sendMessageToRoom('playerJoined', null);
+        const playerName = newPlayer.getName();
+        const playerId = newPlayer.getId();
+        isHost = newPlayer.getIsHost();
+        this.sendMessageToOthers(playerId, 'playerJoined', { playerName, playerId, isHost });
     }
-    // private generatePlayerId(): string {
-    //   return (this.players.length + 1).toString();
-    // }
-    startGame() {
-        this.game = new game_1.Game(this.playerController.getPlayers());
+    setupGame(game) {
+        this.game = game;
         this.game.addObserver(this);
         this.isNewGameSetup = true;
-        this.game.start();
         this.sendMessageToRoom('gameStarted', null);
-        // this.updateGameStateToClients();
-        // this.initiateTurn();
+        console.log("PlayerIDs:", this.playerController.getPlayerIds());
     }
-    // private updateGameStateToClients() {
-    //   if (this.game) {
-    //     const gameState = this.game.getCurrentGameState();
-    //     this.sendStateToPlayers(gameState);
-    //   } else {
-    //     console.error('Game is not initialized');
-    //   }
-    // }
+    startGame() {
+        var _a;
+        (_a = this.game) === null || _a === void 0 ? void 0 : _a.start();
+    }
     initiateTurn() {
         var _a;
         if (this.game) {
@@ -130,8 +124,21 @@ class GameController {
                     }
                 }),
             };
+            console.log('emitting gameState');
+            console.log("Checksum:", this.generateChecksum(playerGameState));
+            playerGameState.checksum = this.generateChecksum(playerGameState);
+            console.log("Sending this game state:", playerGameState);
             this.sendMessage(playerId, 'gameState', JSON.stringify(playerGameState));
         }
+    }
+    generateChecksum(gameState) {
+        const str = JSON.stringify(gameState);
+        console.log(str);
+        let hash = 5381;
+        for (let i = 0; i < str.length; i++) {
+            hash = (hash * 33) ^ str.charCodeAt(i);
+        }
+        return hash >>> 0;
     }
     sendMessage(playerId, messageType, data) {
         // const socket = this.sockets.get(playerId);
@@ -149,6 +156,13 @@ class GameController {
     }
     sendMessageToRoom(messageType, data) {
         this.io.to(this.roomCode).emit(messageType, data);
+    }
+    sendMessageToOthers(sender, messageType, data) {
+        const players = this.playerController.getPlayers().filter(p => p.getId() !== sender);
+        players.forEach(player => {
+            const socket = this.playerController.getPlayerSocketById(player.getId());
+            socket === null || socket === void 0 ? void 0 : socket.emit('playerJoined', data);
+        });
     }
 }
 exports.GameController = GameController;
