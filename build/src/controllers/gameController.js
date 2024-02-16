@@ -124,16 +124,16 @@ class GameController {
                     }
                 }),
             };
-            console.log('emitting gameState');
-            console.log("Checksum:", this.generateChecksum(playerGameState));
+            console.log('emitting gameState!');
+            // console.log("Checksum:", this.generateChecksum(playerGameState))
             playerGameState.checksum = this.generateChecksum(playerGameState);
-            console.log("Sending this game state:", playerGameState);
+            // console.log("Sending this game state:", playerGameState)
             this.sendMessage(playerId, 'gameState', JSON.stringify(playerGameState));
         }
     }
     generateChecksum(gameState) {
         const str = JSON.stringify(gameState);
-        console.log(str);
+        // console.log(str);
         let hash = 5381;
         for (let i = 0; i < str.length; i++) {
             hash = (hash * 33) ^ str.charCodeAt(i);

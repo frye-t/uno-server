@@ -75,6 +75,8 @@ class Game {
         this.flipTopCard();
         this.currentPlayerIndex = this.getStartingPlayerIndex();
         this.notifyObservers();
+        console.log("CurrentPlayerIdx:", this.currentPlayerIndex);
+        console.log(this.turnOrder);
         this.notifyNextTurn();
     }
     dealStartingHands() {
@@ -279,7 +281,7 @@ class Game {
         return gameState;
     }
     getCurrentTurnPlayerId() {
-        return this.players[this.currentPlayerIndex].getId();
+        return this.turnOrder[this.currentPlayerIndex];
     }
     getStartingPlayerIndex() {
         // return Math.floor(Math.random() * this.players.length);
@@ -330,6 +332,7 @@ class Game {
     handleActionCard(actionType) {
         switch (actionType) {
             case 'Draw2':
+                console.log("Drawing 2 for player", this.getNextPlayerIndex());
                 this.handleDrawN(this.players[this.getNextPlayerIndex()], 2);
                 break;
             case 'Skip':

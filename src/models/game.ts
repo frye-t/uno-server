@@ -15,6 +15,7 @@ import PlayerController from '../controllers/playerController';
 
 export class Game<TPlayer extends Player<TCard>, TCard extends Card, TDeck extends Deck<TCard>> {
   private players: TPlayer[];
+  private playerMap: Map<string, TPlayer>;
   private playerController: PlayerController<TPlayer, TCard>;
   private turnOrder: string[];
   private currentPlayerIndex: number;
@@ -35,6 +36,15 @@ export class Game<TPlayer extends Player<TCard>, TCard extends Card, TDeck exten
   private observers: Observer<TCard>[] = [];
   constructor(players: TPlayer[], deck: TDeck, playerController: PlayerController<TPlayer, TCard>) {
     this.players = players;
+    console.log(this.players);
+
+    this.playerMap = new Map();
+    this.players.forEach(player => {
+      this.playerMap.set(player.getId(), player);
+    })
+    console.log("!!!PLAYER MAP!!!")
+    console.log(this.playerMap);
+
     this.playerController = playerController;
 
     this.turnOrder = playerController.getPlayerIds();
@@ -119,7 +129,6 @@ export class Game<TPlayer extends Player<TCard>, TCard extends Card, TDeck exten
   }
 
   private dealStartingHands(): void {
-    // TODO: Fix this back to 7
     this.needsDrawAction = true;
     for (let i = 0; i < 7; i++) {
       for (const player of this.players) {
@@ -130,6 +139,7 @@ export class Game<TPlayer extends Player<TCard>, TCard extends Card, TDeck exten
   }
 
   performAction(action: string, player: TPlayer, data?: ActionData): void {
+    // TODO: This needs serious refactoring
     let command: GameCommand | null = null;
     // console.log('Performing an Action', action, data);
     switch (action) {
@@ -140,6 +150,7 @@ export class Game<TPlayer extends Player<TCard>, TCard extends Card, TDeck exten
         if (data) {
           console.log('Got a PlayCardCommand', player.getId(), data);
           const cardToPlay = player.findCard(data);
+          console.log("Got a card to play:", cardToPlay);
           if (cardToPlay && this.isValidPlay(cardToPlay)) {
             // check valid play
             command = new PlayCardCommand(player, cardToPlay, () =>
@@ -222,18 +233,21 @@ export class Game<TPlayer extends Player<TCard>, TCard extends Card, TDeck exten
   }
 
   private endTurn(): void {
-    this.notifyObservers();
+    // this.notifyObservers();
 
     // TODO: Fix bug with Wild-Draw4 giving UNO
     this.checkUno();
 
+    
     if (this.checkEmptyHand()) {
       // do sometihng
     } else {
       this.checkActionCard();
+      console.log("Last action card:", this.lastActionCard)
       this.startNextTurn();
       this.checkDrawFourChallengeNeeded();
     }
+    this.notifyObservers();
   }
 
   private checkUno() {
@@ -380,14 +394,17 @@ export class Game<TPlayer extends Player<TCard>, TCard extends Card, TDeck exten
     return this.players[this.getPreviousPlayerIndex()];
   }
 
-  private getNextPlayer(): TPlayer {
-    return this.players[this.getNextPlayerIndex()];
+  private getNextPlayer(): TPlayer | undefined {
+    return this.playerMap.get(this.turnOrder[this.getNextPlayerIndex()])
   }
 
   private isValidPlay(card: TCard): boolean {
-    return true;
-    // const topCard = this.discardPile[this.discardPile.length - 1];
-    // return topCard.cardPlayableOnTop(card);
+    // return true;
+    console.log("here");
+    const topCard = this.discardPile[this.discardPile.length - 1];
+    console.log("topCard:", topCard)
+    console.log("card:", card);
+    return topCard.cardPlayableOnTop(card);
   }
 
   private handleDrawN(player: TPlayer, cardsToDraw: number): void {
@@ -402,7 +419,11 @@ export class Game<TPlayer extends Player<TCard>, TCard extends Card, TDeck exten
   private handleActionCard(actionType: string): void {
     switch (actionType) {
       case 'Draw2':
-        this.handleDrawN(this.players[this.getNextPlayerIndex()], 2);
+        const player = this.getNextPlayer();
+        console.log(player);
+        if (player) {
+          this.handleDrawN(player, 2);
+        }
         break;
       case 'Skip':
         this.currentPlayerIndex += this.isClockwiseTurnOrder ? 1 : -1;

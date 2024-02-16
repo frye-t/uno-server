@@ -30,4 +30,9 @@ export class Card {
   toggleVisible(): void {
     this.visible = !this.visible;
   }
+
+  cardPlayableOnTop(card: Card): boolean {
+    // Override this method
+    return false;
+  }
 }
