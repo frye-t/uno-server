@@ -9,4 +9,5 @@ export declare class Card {
     getSuit(): string;
     getValue(): number;
     toggleVisible(): void;
+    cardPlayableOnTop(card: Card): boolean;
 }

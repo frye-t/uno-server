@@ -25,7 +25,9 @@ class GameController {
         const playerId = player.getId();
         this.sendMessage(playerId, 'informPlayerId', { playerId });
         if (this.playersLoaded === this.playerController.getNumberOfPlayers()) {
-            this.sendMessageToRoom('allPlayersLoaded', { playerCount: this.playerController.getNumberOfPlayers() });
+            this.sendMessageToRoom('allPlayersLoaded', {
+                playerCount: this.playerController.getNumberOfPlayers(),
+            });
         }
     }
     requirePlayerAdditionalAction(actionRequired) {
@@ -36,6 +38,14 @@ class GameController {
             this.sendMessage(playerId, actionRequired);
         }
     }
+    updateRoundOver() {
+        var _a;
+        const players = this.playerController.getPlayers();
+        const currentPlayerId = (_a = this.game) === null || _a === void 0 ? void 0 : _a.getCurrentTurnPlayerId();
+        for (const player of players) {
+            this.sendMessage(player.getId(), "roundOver", { playerId: currentPlayerId });
+        }
+    }
     updateAsymmetricState(state) {
         var _a;
         const players = this.playerController.getPlayers();
@@ -44,9 +54,11 @@ class GameController {
         for (const player of players) {
             const pId = player.getId();
             if (pId === currentPlayerId) {
+                console.log('Sending Message:', selfMessage);
                 this.sendMessage(pId, selfMessage);
             }
             else {
+                console.log('Sending Message:', state);
                 this.sendMessage(pId, state, currentPlayerId);
             }
         }
@@ -61,14 +73,18 @@ class GameController {
         const playerName = newPlayer.getName();
         const playerId = newPlayer.getId();
         isHost = newPlayer.getIsHost();
-        this.sendMessageToOthers(playerId, 'playerJoined', { playerName, playerId, isHost });
+        this.sendMessageToOthers(playerId, 'playerJoined', {
+            playerName,
+            playerId,
+            isHost,
+        });
     }
     setupGame(game) {
         this.game = game;
         this.game.addObserver(this);
         this.isNewGameSetup = true;
         this.sendMessageToRoom('gameStarted', null);
-        console.log("PlayerIDs:", this.playerController.getPlayerIds());
+        console.log('PlayerIDs:', this.playerController.getPlayerIds());
     }
     startGame() {
         var _a;
@@ -158,8 +174,10 @@ class GameController {
         this.io.to(this.roomCode).emit(messageType, data);
     }
     sendMessageToOthers(sender, messageType, data) {
-        const players = this.playerController.getPlayers().filter(p => p.getId() !== sender);
-        players.forEach(player => {
+        const players = this.playerController
+            .getPlayers()
+            .filter((p) => p.getId() !== sender);
+        players.forEach((player) => {
             const socket = this.playerController.getPlayerSocketById(player.getId());
             socket === null || socket === void 0 ? void 0 : socket.emit('playerJoined', data);
         });

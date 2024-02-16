@@ -54,10 +54,9 @@ export class GameController<
     this.sendMessage(playerId, 'informPlayerId', { playerId });
 
     if (this.playersLoaded === this.playerController.getNumberOfPlayers()) {
-      this.sendMessageToRoom(
-        'allPlayersLoaded',
-        {playerCount: this.playerController.getNumberOfPlayers()}
-      );
+      this.sendMessageToRoom('allPlayersLoaded', {
+        playerCount: this.playerController.getNumberOfPlayers(),
+      });
     }
   }
 
@@ -69,6 +68,15 @@ export class GameController<
     }
   }
 
+  updateRoundOver() {
+    const players = this.playerController.getPlayers();
+    const currentPlayerId = this.game?.getCurrentTurnPlayerId();
+
+    for (const player of players) {
+      this.sendMessage(player.getId(), "roundOver", {playerId: currentPlayerId})
+    }
+  }
+
   updateAsymmetricState(state: string): void {
     const players = this.playerController.getPlayers();
     const currentPlayerId = this.game?.getCurrentTurnPlayerId();
@@ -76,8 +84,10 @@ export class GameController<
     for (const player of players) {
       const pId = player.getId();
       if (pId === currentPlayerId) {
+        console.log('Sending Message:', selfMessage);
         this.sendMessage(pId, selfMessage);
       } else {
+        console.log('Sending Message:', state);
         this.sendMessage(pId, state, currentPlayerId);
       }
     }
@@ -95,9 +105,12 @@ export class GameController<
     const playerName = newPlayer.getName();
     const playerId = newPlayer.getId();
     isHost = newPlayer.getIsHost();
-    this.sendMessageToOthers(playerId, 'playerJoined', {playerName, playerId, isHost});
+    this.sendMessageToOthers(playerId, 'playerJoined', {
+      playerName,
+      playerId,
+      isHost,
+    });
   }
-
 
   setupGame(game: Game<TPlayer, TCard, TDeck>): void {
     this.game = game;
@@ -105,7 +118,7 @@ export class GameController<
     this.isNewGameSetup = true;
     this.sendMessageToRoom('gameStarted', null);
 
-    console.log("PlayerIDs:", this.playerController.getPlayerIds());
+    console.log('PlayerIDs:', this.playerController.getPlayerIds());
   }
 
   startGame() {
@@ -186,7 +199,7 @@ export class GameController<
     const str = JSON.stringify(gameState);
     // console.log(str);
     let hash = 5381;
-    for (let i =0; i < str.length; i++) {
+    for (let i = 0; i < str.length; i++) {
       hash = (hash * 33) ^ str.charCodeAt(i);
     }
 
@@ -217,10 +230,12 @@ export class GameController<
   }
 
   private sendMessageToOthers(sender: string, messageType: string, data?: any) {
-    const players = this.playerController.getPlayers().filter(p => p.getId() !== sender);
-    players.forEach(player => {
+    const players = this.playerController
+      .getPlayers()
+      .filter((p) => p.getId() !== sender);
+    players.forEach((player) => {
       const socket = this.playerController.getPlayerSocketById(player.getId());
       socket?.emit('playerJoined', data);
-    })
+    });
   }
 }

@@ -96,6 +96,12 @@ export class Game<TPlayer extends Player<TCard>, TCard extends Card, TDeck exten
     }
   }
 
+  notifyRoundOver() {
+    for (let observer of this.observers) {
+      observer.updateRoundOver();
+    }
+  }
+
   notifyNextTurn() {
     for (let observer of this.observers) {
       observer.nextTurnStart();
@@ -129,8 +135,9 @@ export class Game<TPlayer extends Player<TCard>, TCard extends Card, TDeck exten
   }
 
   private dealStartingHands(): void {
+    // TODO: Change this back to 7 cards
     this.needsDrawAction = true;
-    for (let i = 0; i < 7; i++) {
+    for (let i = 0; i < 2; i++) {
       for (const player of this.players) {
         this.performAction('draw', player);
       }
@@ -206,6 +213,7 @@ export class Game<TPlayer extends Player<TCard>, TCard extends Card, TDeck exten
     }
 
     if (command) {
+      console.log("Executing a command");
       command.execute();
       // possibly don't need this notify, will test later
       // this.notifyObservers();
@@ -216,10 +224,14 @@ export class Game<TPlayer extends Player<TCard>, TCard extends Card, TDeck exten
         !this.needsDrawAction &&
         !this.playerWonChallenge
       ) {
+        console.log("Going to end turn");
         this.endTurn();
       } else if (this.playerWonChallenge) {
+        console.log("Looking at player won Challenge");
         this.playerWonChallenge = false;
         this.notifyObservers();
+      } else {
+        console.log("Some other case");
       }
     } else {
       console.error(
@@ -261,9 +273,12 @@ export class Game<TPlayer extends Player<TCard>, TCard extends Card, TDeck exten
 
   private checkEmptyHand(): boolean {
     const currentPlayer = this.getCurrentPlayer();
+    console.log("currentPlayer:", currentPlayer)
+    console.log("Checking for empty hand");
     if (currentPlayer instanceof UNOPlayer && currentPlayer.hasEmptyHand()) {
       console.log('A player emptied their hand', this.currentPlayerIndex);
-      this.notifyAsymmetricState('roundOver');
+      // this.notifyAsymmetricState('roundOver');
+      this.notifyRoundOver();
       return true;
     }
     return false;
@@ -298,7 +313,10 @@ export class Game<TPlayer extends Player<TCard>, TCard extends Card, TDeck exten
       this.playerWonChallenge = true;
     } else {
       // Draw 6 for currnet player, as challenger lost
-      this.handleDrawN(this.getCurrentPlayer(), 6);
+      const player = this.getCurrentPlayer();
+      if (player) {
+        this.handleDrawN(player, 6);
+      }
     }
     this.isChallengeInProgress = false;
     this.needsDrawFourAction = false;
@@ -306,7 +324,10 @@ export class Game<TPlayer extends Player<TCard>, TCard extends Card, TDeck exten
 
   private resolveNoChallenge(): void {
     // Draw four for current player, as they did not challenge Draw4
-    this.handleDrawN(this.getCurrentPlayer(), 4);
+    const player = this.getCurrentPlayer()
+    if (player) {
+      this.handleDrawN(player, 4);
+    }
     this.needsDrawFourAction = false;
     this.isChallengeInProgress = false;
   }
@@ -349,7 +370,7 @@ export class Game<TPlayer extends Player<TCard>, TCard extends Card, TDeck exten
       console.log(player.getHand());
     })
 
-    console.log("Game State:", gameState);
+    // console.log("Game State:", gameState);
     // console.log("Checksum:", this.checksum(gameState));
     return gameState;
   }
@@ -384,10 +405,11 @@ export class Game<TPlayer extends Player<TCard>, TCard extends Card, TDeck exten
     return (this.currentPlayerIndex + incrementer + playerCount) % playerCount;
   }
 
-  private getCurrentPlayer(): TPlayer {
+  private getCurrentPlayer(): TPlayer | undefined {
     console.log('players:', this.players);
     console.log('currentPlayerIndex', this.currentPlayerIndex);
-    return this.players[this.currentPlayerIndex];
+    return this.playerMap.get(this.turnOrder[this.currentPlayerIndex]);
+    // return this.players[this.currentPlayerIndex];
   }
 
   private getPreviousPlayer(): TPlayer {
@@ -400,11 +422,9 @@ export class Game<TPlayer extends Player<TCard>, TCard extends Card, TDeck exten
 
   private isValidPlay(card: TCard): boolean {
     // return true;
-    console.log("here");
     const topCard = this.discardPile[this.discardPile.length - 1];
-    console.log("topCard:", topCard)
-    console.log("card:", card);
-    return topCard.cardPlayableOnTop(card);
+    return true;
+    // return topCard.cardPlayableOnTop(card);
   }
 
   private handleDrawN(player: TPlayer, cardsToDraw: number): void {

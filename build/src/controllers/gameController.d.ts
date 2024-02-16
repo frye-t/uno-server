@@ -17,6 +17,7 @@ export declare class GameController<TPlayer extends Player<TCard>, TCard extends
     update(gameState: GameState<TCard>): void;
     playerLoaded(player: TPlayer): void;
     requirePlayerAdditionalAction(actionRequired: string): void;
+    updateRoundOver(): void;
     updateAsymmetricState(state: string): void;
     nextTurnStart(): void;
     bindSocketEvents(): void;

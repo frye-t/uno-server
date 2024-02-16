@@ -6,4 +6,5 @@ export interface Observer<TCard extends Card> {
   requirePlayerAdditionalAction(actionRequired: string): void;
   updateAsymmetricState(state: string): void;
   nextTurnStart(): void;
+  updateRoundOver(): void;
 }

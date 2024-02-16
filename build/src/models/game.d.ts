@@ -7,6 +7,7 @@ import { Deck } from './deck';
 import PlayerController from '../controllers/playerController';
 export declare class Game<TPlayer extends Player<TCard>, TCard extends Card, TDeck extends Deck<TCard>> {
     private players;
+    private playerMap;
     private playerController;
     private turnOrder;
     private currentPlayerIndex;
@@ -28,6 +29,7 @@ export declare class Game<TPlayer extends Player<TCard>, TCard extends Card, TDe
     notifyObservers(): void;
     notifyPlayerAdditionalAction(actionRequired: string): void;
     notifyAsymmetricState(state: string): void;
+    notifyRoundOver(): void;
     notifyNextTurn(): void;
     shuffleTurnOrder(): void;
     start(): void;
