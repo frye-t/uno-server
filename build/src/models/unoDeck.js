@@ -15,14 +15,14 @@ class UNODeck extends deck_1.Deck {
         const actionCards = ['Reverse', 'Reverse', 'Reverse'];
         // const actionCards = ['Skip', 'Skip', 'Skip'];
         // const actionCards = ['Draw2', 'Skip', 'Reverse'];
-        // const wildCards = ['Card', 'Draw4'];
+        const wildCards = ['Card', 'Draw4'];
         for (const color of colors) {
-            // for (const number of numbers) {
-            //   cards.push(CardFactory.createNumberCard(number, color));
-            //   if (number !== '0') {
-            //     cards.push(CardFactory.createNumberCard(number, color));
-            //   }
-            // }
+            for (const number of numbers) {
+                cards.push(cardFactory_1.CardFactory.createNumberCard(number, color));
+                if (number !== '0') {
+                    cards.push(cardFactory_1.CardFactory.createNumberCard(number, color));
+                }
+            }
             for (const action of actionCards) {
                 // Remove this inner for loop
                 for (let i = 0; i < 10; i++) {
@@ -33,7 +33,7 @@ class UNODeck extends deck_1.Deck {
             }
         }
         // TODO: Change this back to 4
-        // for (let i = 0; i < 4; i++) {
+        // for (let i = 0; i < 20; i++) {
         //   cards.push(CardFactory.createWildCard(wildCards[0]));
         //   cards.push(CardFactory.createWildCard(wildCards[1]));
         // }
