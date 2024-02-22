@@ -14,6 +14,9 @@ export class UNOCard extends Card {
   }
 
   cardPlayableOnTop(cardToPlay: UNOCard) {
+    console.log('now here');
+    console.log('Trying to validate', cardToPlay);
+    console.log('Playable on top of', this);
     return (
       this.getNumber() === cardToPlay.getNumber() ||
       this.getColor() === cardToPlay.getColor() ||
@@ -32,5 +35,5 @@ export class UNOCard extends Card {
   isActionCard(): boolean {
     const actionCards = ['Draw2', 'Skip', 'Reverse'];
     return actionCards.includes(this.getNumber());
-}
+  }
 }

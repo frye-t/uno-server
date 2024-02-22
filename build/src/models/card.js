@@ -23,6 +23,10 @@ class Card {
     toggleVisible() {
         this.visible = !this.visible;
     }
+    cardPlayableOnTop(card) {
+        // Override this method
+        return false;
+    }
 }
 exports.Card = Card;
 //# sourceMappingURL=card.js.map

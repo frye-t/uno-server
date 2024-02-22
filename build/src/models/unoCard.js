@@ -13,6 +13,9 @@ class UNOCard extends card_1.Card {
         return this.getSuit();
     }
     cardPlayableOnTop(cardToPlay) {
+        console.log('now here');
+        console.log('Trying to validate', cardToPlay);
+        console.log('Playable on top of', this);
         return (this.getNumber() === cardToPlay.getNumber() ||
             this.getColor() === cardToPlay.getColor() ||
             cardToPlay.getColor() === 'Wild');
