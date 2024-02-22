@@ -38,7 +38,7 @@ export class UNODeck extends Deck<UNOCard> {
     // TODO: Change this back to 4
     for (let i = 0; i < 20; i++) {
       cards.push(CardFactory.createWildCard(wildCards[0]));
-      // cards.push(CardFactory.createWildCard(wildCards[1]));
+      cards.push(CardFactory.createWildCard(wildCards[1]));
     }
 
     this.setCards(cards);

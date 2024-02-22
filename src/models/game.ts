@@ -143,6 +143,7 @@ export class Game<
     console.log('CurrentPlayerIdx:', this.currentPlayerIndex);
     console.log(this.turnOrder);
     this.notifyNextTurn();
+
     if (actionRequired) {
       this.notifyPlayerAdditionalAction('chooseColor');
       this.isPlayerActionRequired = true;
@@ -380,7 +381,6 @@ export class Game<
         this.currentPlayerIndex += this.isClockwiseTurnOrder ? 1 : -1;
         break;
       case 'Skip':
-        console.log("In Skip");
         this.currentPlayerIndex += this.isClockwiseTurnOrder ? 1 : -1;
         break;
       case 'Reverse':
@@ -388,6 +388,11 @@ export class Game<
         break;
       case 'Card':
         actionRequired = true;
+        break;
+      case 'Draw4':
+        this.deck.insertMiddle(topCard);
+        this.deck.shuffle();
+        actionRequired = this.flipTopCard();
         break;
     }
 

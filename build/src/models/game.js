@@ -87,17 +87,21 @@ class Game {
         for (const player of this.players) {
             player.printHand();
         }
-        this.flipTopCard();
         this.currentPlayerIndex = this.getStartingPlayerIndex();
+        const actionRequired = this.flipTopCard();
         this.notifyObservers();
         console.log('CurrentPlayerIdx:', this.currentPlayerIndex);
         console.log(this.turnOrder);
         this.notifyNextTurn();
+        if (actionRequired) {
+            this.notifyPlayerAdditionalAction('chooseColor');
+            this.isPlayerActionRequired = true;
+        }
     }
     dealStartingHands() {
         // TODO: Change this back to 7 cards
         this.needsDrawAction = true;
-        for (let i = 0; i < 10; i++) {
+        for (let i = 0; i < 3; i++) {
             for (const player of this.players) {
                 this.performAction('draw', player);
             }
@@ -152,7 +156,7 @@ class Game {
                             callback = () => this.setActiveColor(actionValue);
                             break;
                         case 'handleChallenge':
-                            console.log("In handle challenge");
+                            console.log('In handle challenge');
                             if (data.value === 'true') {
                                 console.log('Player challenged Draw Four');
                                 callback = () => this.resolveChallenge(this.doesChallengeWin());
@@ -203,6 +207,7 @@ class Game {
     }
     endTurn() {
         // this.notifyObservers();
+        console.log('ending turn');
         // TODO: Fix bug with Wild-Draw4 giving UNO
         this.checkUno();
         if (this.checkEmptyHand()) {
@@ -289,14 +294,41 @@ class Game {
     }
     playCard(card) {
         this.discardPile.push(card);
-        this.notifyObservers();
+        // this.notifyObservers();
     }
     flipTopCard() {
         const topCard = this.drawCard();
+        let actionRequired = false;
         this.activeColor = topCard.getSuit();
         this.activeNumber = topCard.getRank();
         topCard.toggleVisible();
         this.discardPile.unshift(topCard);
+        console.log("STARTING ACTIVE NUMBER:", this.activeNumber);
+        switch (this.activeNumber) {
+            case 'Draw2':
+                const player = this.getCurrentPlayer();
+                if (player) {
+                    this.handleDrawN(player, 2);
+                }
+                this.currentPlayerIndex += this.isClockwiseTurnOrder ? 1 : -1;
+                break;
+            case 'Skip':
+                console.log("In Skip");
+                this.currentPlayerIndex += this.isClockwiseTurnOrder ? 1 : -1;
+                break;
+            case 'Reverse':
+                this.isClockwiseTurnOrder = !this.isClockwiseTurnOrder;
+                break;
+            case 'Card':
+                actionRequired = true;
+                break;
+            case 'Draw4':
+                this.deck.insertMiddle(topCard);
+                this.deck.shuffle();
+                actionRequired = this.flipTopCard();
+                break;
+        }
+        return actionRequired;
     }
     getCurrentGameState() {
         const gameState = {
@@ -362,7 +394,8 @@ class Game {
             topCard.getSuit() === card.getSuit() ||
             card.getSuit() === 'Wild' ||
             card.getSuit() === this.activeColor;
-        return playable;
+        return true;
+        // return playable;
     }
     handleDrawN(player, cardsToDraw) {
         // Need this flag to avoid turn skipping on action execution
@@ -380,6 +413,7 @@ class Game {
                 if (player) {
                     this.handleDrawN(player, 2);
                 }
+                this.currentPlayerIndex += this.isClockwiseTurnOrder ? 1 : -1;
                 break;
             case 'Skip':
                 this.currentPlayerIndex += this.isClockwiseTurnOrder ? 1 : -1;
