@@ -37,6 +37,9 @@ export class Game<
   private isChallengeInProgress: boolean;
   private playerWonChallenge: boolean;
 
+  private playerDeclaredUno: boolean;
+  private dontEndTurn: boolean;
+
   private observers: Observer<TCard>[] = [];
   constructor(
     players: TPlayer[],
@@ -76,6 +79,9 @@ export class Game<
     this.needsDrawFourAction = false;
     this.isChallengeInProgress = false;
     this.playerWonChallenge = false;
+
+    this.playerDeclaredUno = false;
+    this.dontEndTurn = false;
   }
 
   addObserver(observer: Observer<TCard>) {
@@ -99,8 +105,15 @@ export class Game<
   }
 
   notifyAsymmetricState(state: string) {
+    console.log("NOTIFYING AN ASYMEMTRIC STATE:", state)
     for (let observer of this.observers) {
       observer.updateAsymmetricState(state);
+    }
+  }
+
+  notifySymmetricState(state: string) {
+    for (let observer of this.observers) {
+      observer.updateSymmetricState(state);
     }
   }
 
@@ -110,9 +123,9 @@ export class Game<
     }
   }
 
-  notifyNextTurn() {
+  notifyNextTurn(canUno?: boolean) {
     for (let observer of this.observers) {
-      observer.nextTurnStart();
+      observer.nextTurnStart(canUno, 'canUno');
     }
   }
 
@@ -220,6 +233,20 @@ export class Game<
                 callback = () => this.resolveNoChallenge();
                 break;
               }
+            case 'declareUno':
+              console.log('A player declared UNO!:', player);
+              callback = () => this.handleDeclareUno();
+              // this.playerDeclaredUno = true;
+              this.dontEndTurn = true;;
+              break;
+            case 'callUndeclaredUno':
+              console.log(
+                'Someone called player out on not declaring UNO!',
+                data.value
+              );
+              callback = () => this.handleCallUndeclaredUno(data.value);
+              this.dontEndTurn = true;
+              break;
           }
           if (callback) {
             command = new AdditionalActionCommand(callback);
@@ -230,16 +257,19 @@ export class Game<
     }
 
     if (command) {
-      console.log('Executing a command');
+      console.log('Executing a command:', command);
       command.execute();
       // possibly don't need this notify, will test later
       // this.notifyObservers();
       // Don't end turn if another action is required,
       // a draw action is taking place, or a player won a challenge
+      console.log("DONTENDTURN:", this.dontEndTurn)
       if (
         !this.isPlayerActionRequired &&
         !this.needsDrawAction &&
-        !this.playerWonChallenge
+        !this.playerWonChallenge &&
+        !this.playerDeclaredUno &&
+        !this.dontEndTurn
       ) {
         console.log('Going to end turn');
         this.endTurn();
@@ -250,12 +280,41 @@ export class Game<
       } else {
         // Occurs on Draw4 played
         console.log('Some other case');
+        if (this.playerDeclaredUno) {
+          console.log('Disabled UNO Flag');
+          this.playerDeclaredUno = false;
+        }
+
+        if (this.dontEndTurn && !this.needsDrawAction) {
+          this.dontEndTurn = false;
+        }
       }
     } else {
       console.error(
         `Action '${action}' is not recognized or rule validation failed`
       );
     }
+  }
+
+  private handleCallUndeclaredUno(playerId: string | undefined) {
+    let player;
+    if (playerId) {
+      player = this.playerController.getPlayerById(playerId);
+    }
+    if (player) {
+      this.handleDrawN(player, 2);
+      this.notifySymmetricState('calledUndeclaredUno');
+      this.notifyObservers();
+    }
+  }
+
+  private handleDeclareUno() {
+    console.log('DO SOMETHING, maybe inform other players that UNO');
+    const player = this.getCurrentPlayer();
+    if (player instanceof UNOPlayer) {
+      player.setDeclaredUno(true);
+    }
+    this.notifyAsymmetricState('uno');
   }
 
   private doesChallengeWin(): boolean {
@@ -284,13 +343,12 @@ export class Game<
     const currentPlayer = this.getCurrentPlayer();
     if (currentPlayer instanceof UNOPlayer && currentPlayer.hasUno()) {
       console.log('A player has UNO! Player:', this.currentPlayerIndex);
-      this.notifyAsymmetricState('uno');
     }
   }
 
   private checkEmptyHand(): boolean {
     const currentPlayer = this.getCurrentPlayer();
-    console.log('currentPlayer:', currentPlayer);
+    // console.log('currentPlayer:', currentPlayer);
     console.log('Checking for empty hand');
     if (currentPlayer instanceof UNOPlayer && currentPlayer.hasEmptyHand()) {
       console.log('A player emptied their hand', this.currentPlayerIndex);
@@ -310,8 +368,31 @@ export class Game<
   }
 
   private startNextTurn() {
+    const prevPlayer = this.getCurrentPlayer();
+    // console.log('PREV PLAYER:', prevPlayer);
+    // if (prevPlayer instanceof UNOPlayer) {
+    //   console.log('CHECKING UNO PLAYER');
+    //   console.log('HAS UNO:', prevPlayer.hasUno());
+    //   console.log('HAS DECLARED UNO:', prevPlayer.hasDeclaredUno());
+    //   console.log(prevPlayer);
+    // }
+    if (
+      prevPlayer instanceof UNOPlayer &&
+      prevPlayer.hasUno() &&
+      !prevPlayer.hasDeclaredUno()
+    ) {
+      this.notifyAsymmetricState('undeclaredUno');
+    }
+
     this.setNextPlayerIndex();
-    this.notifyNextTurn();
+    const player = this.getCurrentPlayer();
+
+    const topCard = this.discardPile[this.discardPile.length - 1];
+    const canUno =
+      player instanceof UNOPlayer && player?.canUno(topCard, this.activeColor);
+
+    console.log('Next Player Can UNO:', canUno);
+    this.notifyNextTurn(canUno);
   }
 
   private checkDrawFourChallengeNeeded() {
@@ -371,7 +452,7 @@ export class Game<
     topCard.toggleVisible();
     this.discardPile.unshift(topCard);
 
-    console.log("STARTING ACTIVE NUMBER:", this.activeNumber);
+    console.log('STARTING ACTIVE NUMBER:', this.activeNumber);
     switch (this.activeNumber) {
       case 'Draw2':
         const player = this.getCurrentPlayer();
@@ -412,9 +493,9 @@ export class Game<
       turnOrder: this.turnOrder,
     };
 
-    this.players.forEach((player) => {
-      console.log(player.getHand());
-    });
+    // this.players.forEach((player) => {
+    //   console.log(player.getHand());
+    // });
 
     // console.log("Game State:", gameState);
     // console.log("Checksum:", this.checksum(gameState));
@@ -452,7 +533,7 @@ export class Game<
   }
 
   private getCurrentPlayer(): TPlayer | undefined {
-    console.log('players:', this.players);
+    // console.log('players:', this.players);
     console.log('currentPlayerIndex', this.currentPlayerIndex);
     return this.playerMap.get(this.turnOrder[this.currentPlayerIndex]);
     // return this.players[this.currentPlayerIndex];

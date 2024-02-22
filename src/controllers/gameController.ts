@@ -73,7 +73,9 @@ export class GameController<
     const currentPlayerId = this.game?.getCurrentTurnPlayerId();
 
     for (const player of players) {
-      this.sendMessage(player.getId(), "roundOver", {playerId: currentPlayerId})
+      this.sendMessage(player.getId(), 'roundOver', {
+        playerId: currentPlayerId,
+      });
     }
   }
 
@@ -88,13 +90,25 @@ export class GameController<
         this.sendMessage(pId, selfMessage);
       } else {
         console.log('Sending Message:', state);
-        this.sendMessage(pId, state, currentPlayerId);
+        this.sendMessage(pId, state, {playerId: currentPlayerId});
       }
     }
   }
 
-  nextTurnStart(): void {
-    this.initiateTurn();
+  updateSymmetricState(state: string): void {
+    const players = this.playerController.getPlayers();
+    for (const player of players) {
+      const pId = player.getId();
+      this.sendMessage(pId, state);
+    }
+  }
+
+  nextTurnStart(specialCondition?: boolean, message?: string): void {
+    if (specialCondition) {
+      this.initiateTurn(message);
+    } else {
+      this.initiateTurn();
+    }
   }
 
   bindSocketEvents() {}
@@ -125,7 +139,7 @@ export class GameController<
     this.game?.start();
   }
 
-  private initiateTurn() {
+  private initiateTurn(message?: string) {
     if (this.game) {
       const currentTurnPlayerId = this.game?.getCurrentTurnPlayerId();
       const players = this.playerController.getPlayers();
@@ -137,6 +151,10 @@ export class GameController<
           isCurrentTurn,
           currentTurnPlayerId
         );
+      }
+
+      if (message) {
+        this.sendMessage(currentTurnPlayerId, message);
       }
     } else {
       console.error('Game is not initialized');

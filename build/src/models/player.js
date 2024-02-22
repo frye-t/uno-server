@@ -52,6 +52,15 @@ class Player {
     resetHand() {
         this.hand = [];
     }
+    canUno(topCard, activeColor) {
+        if (this.hand.length !== 2) {
+            return false;
+        }
+        return this.hand.some((card) => topCard.getRank() === card.getRank() ||
+            topCard.getSuit() === card.getSuit() ||
+            card.getSuit() === 'Wild' ||
+            card.getSuit() === activeColor);
+    }
 }
 exports.Player = Player;
 //# sourceMappingURL=player.js.map

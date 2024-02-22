@@ -20,4 +20,5 @@ export declare class Player<TCard extends Card> {
     getHand(): TCard[];
     getHandSize(): number;
     resetHand(): void;
+    canUno(topCard: TCard, activeColor: string | null): boolean;
 }

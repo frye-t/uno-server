@@ -30,7 +30,7 @@ export declare class Game<TPlayer extends Player<TCard>, TCard extends Card, TDe
     notifyPlayerAdditionalAction(actionRequired: string): void;
     notifyAsymmetricState(state: string): void;
     notifyRoundOver(): void;
-    notifyNextTurn(): void;
+    notifyNextTurn(canUno?: boolean): void;
     shuffleTurnOrder(): void;
     start(): void;
     private dealStartingHands;

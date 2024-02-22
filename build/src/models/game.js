@@ -66,9 +66,9 @@ class Game {
             observer.updateRoundOver();
         }
     }
-    notifyNextTurn() {
+    notifyNextTurn(canUno) {
         for (let observer of this.observers) {
-            observer.nextTurnStart();
+            observer.nextTurnStart(canUno, 'canUno');
         }
     }
     shuffleTurnOrder() {
@@ -248,9 +248,13 @@ class Game {
             }
         }
     }
-    startNextTurn() {
+    startNextTurn(canUno) {
         this.setNextPlayerIndex();
-        this.notifyNextTurn();
+        const player = this.getCurrentPlayer();
+        const topCard = this.discardPile[this.discardPile.length - 1];
+        const unoable = player === null || player === void 0 ? void 0 : player.canUno(topCard, this.activeColor);
+        console.log("Next Player Can UNO:", unoable);
+        this.notifyNextTurn(unoable);
     }
     checkDrawFourChallengeNeeded() {
         if (this.needsDrawFourAction && !this.isChallengeInProgress) {
@@ -313,7 +317,6 @@ class Game {
                 this.currentPlayerIndex += this.isClockwiseTurnOrder ? 1 : -1;
                 break;
             case 'Skip':
-                console.log("In Skip");
                 this.currentPlayerIndex += this.isClockwiseTurnOrder ? 1 : -1;
                 break;
             case 'Reverse':

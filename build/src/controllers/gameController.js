@@ -43,7 +43,9 @@ class GameController {
         const players = this.playerController.getPlayers();
         const currentPlayerId = (_a = this.game) === null || _a === void 0 ? void 0 : _a.getCurrentTurnPlayerId();
         for (const player of players) {
-            this.sendMessage(player.getId(), "roundOver", { playerId: currentPlayerId });
+            this.sendMessage(player.getId(), 'roundOver', {
+                playerId: currentPlayerId,
+            });
         }
     }
     updateAsymmetricState(state) {
@@ -63,8 +65,13 @@ class GameController {
             }
         }
     }
-    nextTurnStart() {
-        this.initiateTurn();
+    nextTurnStart(specialCondition, message) {
+        if (specialCondition) {
+            this.initiateTurn(message);
+        }
+        else {
+            this.initiateTurn();
+        }
     }
     bindSocketEvents() { }
     playerJoined(socket, isHost) {
@@ -90,7 +97,7 @@ class GameController {
         var _a;
         (_a = this.game) === null || _a === void 0 ? void 0 : _a.start();
     }
-    initiateTurn() {
+    initiateTurn(message) {
         var _a;
         if (this.game) {
             const currentTurnPlayerId = (_a = this.game) === null || _a === void 0 ? void 0 : _a.getCurrentTurnPlayerId();
@@ -99,6 +106,9 @@ class GameController {
                 const playerId = player.getId();
                 const isCurrentTurn = currentTurnPlayerId === playerId;
                 this.notifyPlayerTurnStatus(playerId, isCurrentTurn, currentTurnPlayerId);
+            }
+            if (message) {
+                this.sendMessage(currentTurnPlayerId, message);
             }
         }
         else {

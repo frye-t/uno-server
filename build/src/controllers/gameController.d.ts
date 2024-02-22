@@ -19,7 +19,7 @@ export declare class GameController<TPlayer extends Player<TCard>, TCard extends
     requirePlayerAdditionalAction(actionRequired: string): void;
     updateRoundOver(): void;
     updateAsymmetricState(state: string): void;
-    nextTurnStart(): void;
+    nextTurnStart(specialCondition?: boolean, message?: string): void;
     bindSocketEvents(): void;
     playerJoined(socket: Socket, isHost: boolean): void;
     setupGame(game: Game<TPlayer, TCard, TDeck>): void;
